@@ -244,6 +244,7 @@
 <p>{{ $inj['name'] ?? '-' }} - {{ $inj['route'] ?? '-' }} ({{ $inj['dose'] ?? '-' }})</p>
 @endforeach
 @endif
+<!---->
 
 <!-- LAB TESTS / INVESTIGATIONS -->
 @if(!empty($prescription_data['investigations']))
