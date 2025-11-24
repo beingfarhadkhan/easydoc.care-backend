@@ -1,0 +1,346 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use App\Models\User;
+use App\Models\Clinic;
+use App\Models\Account;
+use App\Models\AssignToClinic;
+use App\Models\AssignToAccount;
+use App\Models\AccountBilling;
+
+
+class UserController extends Controller
+{
+    public function createUser(Request $request)
+    {
+        validate($request, [
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'phone' => 'required|string|max:15|unique:users',
+            'password' => 'required|string|min:6',
+            'role' => 'required|string|in:1,2,3' // Example roles: 1=Admin, 2=Doctor, 3=Staff
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => bcrypt($request->password),
+            'phone' => $request->phone,
+            'role' => 1,
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+
+        // dd($user);
+    }
+
+
+    public function getAccountUser(Request $request)
+    {
+    
+    // Step 1: Check if user is an Account Admin
+    // var_dump($request->user_id);
+    $accountAssignment = AssignToAccount::where('user_id', $request->user_id)
+        ->whereHas('user', function($q) {
+            $q->where('role', '1');
+        })
+        ->with('account')
+        ->first();
+    //  var_dump($accountAssignment);
+        if (!$accountAssignment) {
+            return response()->json(['message' => 'Not an account admin'], 403);
+        }
+
+        // Step 2: Fetch all clinics under that account with their users
+        $clinics = Clinic::where('account_id', $accountAssignment->account_id)
+            ->with(['users' => function($q) {
+                $q->select('users.id','users.name','users.email','users.phone');
+            }])
+            ->get();
+
+        // Step 3: Fetch all users of the account (from assign_to_accounts)
+        $accountUsers = User::whereHas('accounts', function($q) use ($accountAssignment) {
+            $q->where('accounts.id', $accountAssignment->account_id);
+        })->select('users.id','users.name','users.email','users.phone')->get();
+
+        return response()->json([
+            'account' => $accountAssignment->account->legal_name,
+            'clinics' => $clinics,
+            'account_users' => $accountUsers
+        ]);
+    }
+
+    public function userManagement(request $request){
+
+        // $usermag = User::where('id',$request->user_id);
+        
+        // if(!$usermag){
+        //     return response()->json([
+        //         'message'=> 'User not found'
+        //     ],403);
+        // }
+        
+        // $request->validate([
+        //     'email' => 'required|string|email|max:255|unique:users',
+        //     'phone' => 'required|string|max:10|unique:users',
+        // ]);
+
+        //  $authUser = auth()->user();
+        // if (!$authUser) {
+        //     return response()->json([
+        //     'message' => 'Unauthorized Access'
+        //     ], 403);
+        // }
+
+        // $isAccountAdmin = AssignToAccount::where('user_id', $authUser->id)
+        //     ->whereHas('user', function($q) {
+        //     $q->where('role', '1');
+        //     })
+        //     ->first();
+
+        // if (!$isAccountAdmin) {
+        //     return response()->json([
+        //     'message' => 'Unauthorized Access'
+        //     ], 403);
+        // }
+        $accountId = Clinic::where('id', $request->clinics[0])->first()->account_id;
+        
+        
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'password' => bcrypt($request->phone),
+            // 'is_admin' => $request->is_admin,
+            'pad_configration' => json_encode($request->pad_configration),
+            'role' => $request->role,
+            'status' => $request->status,    
+            'selected_clinic' => $request->clinics[0],
+            'selected_account' => $accountId,    
+        ]);
+
+
+
+        // if($user->is_admin === 1){
+        //     foreach($request->accounts as $account){
+        //         AssignToAccount::create([
+        //             'user_id' => $user->id,
+        //             'account_id' => $account,
+        //             'created_at' => now(),
+        //             'updated_at' => now()
+        //         ]);
+        //     }                    
+        // }
+
+
+        foreach($request->clinics as $clinic){
+            AssignToClinic::create([
+                'user_id' => $user->id,
+                'clinic_id' => $clinic,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
+
+       return response()->json([
+            'message' => 'User created Successfully'
+        ],200);
+
+    }
+
+    
+    public function getUserManagement(Request $request)
+    {
+        // Validate account
+        $account = Account::find($request->account_id);
+        if (!$account) {
+            return response()->json(['message' => 'Account not found'], 404);
+        }
+
+        // Get all clinics under this account
+        $clinicIds = Clinic::where('account_id', $request->account_id)
+            ->pluck('id')
+            ->toArray();
+
+        if (empty($clinicIds)) {
+            return response()->json(['message' => 'No clinics found for this account'], 204);
+        }
+
+        // Get all user ids assigned to these clinics
+        $assignedUserIds = AssignToClinic::whereIn('clinic_id', $clinicIds)
+            ->pluck('user_id')
+            ->unique()
+            ->toArray();
+
+        if (empty($assignedUserIds)) {
+            return response()->json(['message' => 'No users assigned to these clinics'], 204);
+        }
+
+        // Fetch users from users table
+        $users = User::whereIn('id', $assignedUserIds)->get();
+
+        if ($users->isEmpty()) {
+            return response()->json(['message' => 'No users found'], 204);
+        }
+
+        
+        // Prepare output
+        $doctors = [];
+        $staff = [];
+
+        foreach ($users as $user) {
+
+            $userData = $user->toArray(); // convert to array
+
+            $userData['is_admin'] = AssignToAccount::where('user_id', $userData['id'])
+                ->where('account_id', $request->account_id)                
+                ->first() ? true : false;
+
+            if ($user->role == 1 || $user->role == 2) {
+            
+                $doctors[] = $userData;
+                
+            } elseif ($user->role == 3) {
+                $staff[] = $userData;
+            }
+
+            
+
+        }
+
+        return response()->json([
+            'doctors' => array_map(function($doctor) {
+                $doctor['pad_configuration'] = $doctor['pad_configuration'] ? json_decode($doctor['pad_configuration'], true) : null;
+                return $doctor;
+            }, $doctors),
+            'staff' => $staff,
+            // 'is_admin' => $is_admin
+        ], 200);
+    }
+
+    // public function lastAccessedClinic(Request $request)
+    // {
+    //     $user = User::find(auth()->user()->id);
+
+    //     $user->last_excessed_clinic = $request->clinic_id;
+    //     $user->save();
+
+    //     return response()->json(['message' => 'Last accessed clinic updated successfully'], 200);
+    // }
+    
+    public function getUser(Request $request)
+    {
+        $user = User::find(auth()->user()->id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+        
+        $user->pad_configuration = $user->pad_configuration ? json_decode($user->pad_configuration, true) : null;
+
+        $accounts = Account::whereIn('id', function($query) use ($user) {
+            $query->select('account_id')
+                  ->from('assign_to_accounts')
+                  ->where('user_id', $user->id);
+        })->get();
+
+        if(!$accounts->isEmpty()){
+            foreach($accounts as $account){
+                $account['billing_details'] = AccountBilling::where('account_id', $account->id)->first();
+            }
+        }
+
+
+        $clinics = Clinic::whereIn('id', function($query) use ($user) {
+            $query->select('clinic_id')
+                  ->from('assign_to_clinics')
+                  ->where('user_id', $user->id);
+        })->get();
+
+        $selectedclinic = null;
+        $selectedaccount = null;
+        
+
+        $selectedclinic = Clinic::find($user->selected_clinic);
+
+        if($selectedclinic){
+        $selectedaccount = Account::find($selectedclinic->account_id);
+        }
+        
+        if($selectedaccount){
+            $selectedaccount['billing_details'] = AccountBilling::where('account_id', $selectedaccount->id)->first();
+        }
+
+        if($selectedaccount){  
+            $selectedaccountadmin = AssignToAccount::where('user_id', $user->id)
+                ->where('account_id', $selectedaccount->id)
+                ->first() ? true : false;
+        }else{
+            $selectedaccountadmin = false;
+        }
+        
+        return response()->json([
+            'user' => $user,
+            'accounts' => $accounts,
+            'clinics' => $clinics,
+            'selected_clinic' => $selectedclinic,
+            'selected_account' => $selectedaccount,
+            'selected_account_admin' => $selectedaccountadmin
+        ] , 200);
+    }
+
+    public function getDoctorsByClinic(Request $request)
+    {
+        $clinic = Clinic::where('id', $request->clinic_id)->first();
+        if (!$clinic) {
+            return response()->json(['message' => 'Clinic not found'], 404);
+        }
+
+        $doctorIds = AssignToClinic::where('clinic_id', $request->clinic_id)
+            ->whereHas('user', function($q) {
+            $q->whereIn('role', [1, 2]); // roles 1 and 2
+            })
+            ->pluck('user_id')
+            ->toArray();
+
+        if (empty($doctorIds)) {
+            return response()->json(['message' => 'No doctors assigned to this clinic'], 204);
+        }
+
+        $doctors = User::whereIn('id', $doctorIds)->get();
+        $authUser = auth()->user();
+
+        if ($authUser) {
+            $isAssignedToAccount = AssignToAccount::where('user_id', $authUser->id)
+                ->where('account_id', $clinic->account_id)
+                ->exists();
+
+            if ($isAssignedToAccount && ! $doctors->contains('id', $authUser->id)) {
+                // reload fresh user record to ensure full attributes
+                $doctors->push(User::find($authUser->id));
+            }
+        }
+
+        return response()->json([
+            'doctors' => $doctors
+        ], 200);
+    }
+
+    public function updatePadConfiguration(Request $request)
+    {
+        $user = User::find(auth()->user()->id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $user->pad_configuration = json_encode($request->pad_configuration);
+        $user->save();
+
+        return response()->json(['message' => 'Pad configuration updated successfully'], 200);
+    }
+
+}
