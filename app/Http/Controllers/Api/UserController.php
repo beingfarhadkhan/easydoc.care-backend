@@ -240,6 +240,8 @@ class UserController extends Controller
         }
         
         $user->pad_configuration = $user->pad_configuration ? json_decode($user->pad_configuration, true) : null;
+        $user->vital_config = $user->vital_config ? json_decode($user->vital_config, true) : null;
+        $user->template_config = $user->template_config ? json_decode($user->template_config, true) : null;
 
         $accounts = Account::whereIn('id', function($query) use ($user) {
             $query->select('account_id')
@@ -341,6 +343,34 @@ class UserController extends Controller
         $user->save();
 
         return response()->json(['message' => 'Pad configuration updated successfully'], 200);
+    }
+
+    public function updateVitalConfig(Request $request)
+    {
+        $user = User::find(auth()->user()->id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $user->vital_config = json_encode($request->vital_config);
+        $user->save();
+
+        return response()->json(['message' => 'Vital configuration updated successfully'], 200);
+    }
+
+    public function updateTemplate(Request $request)
+    {
+        $user = User::find(auth()->user()->id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $user->template_config = json_encode($request->template_config);
+        $user->save();
+
+        return response()->json(['message' => 'Template configuration updated successfully'], 200);
     }
 
 }

@@ -29,6 +29,8 @@ class User extends Authenticatable
         'selected_clinic',
         'selected_account',
         'pad_configration',
+        'vital_config',
+        'template_config',
         
     ];
 

@@ -158,6 +158,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('user',[UserController::class,'getUser']); 
     Route::get('get-doctors-by-clinic', [UserController::class, 'getDoctorsByClinic']);
     Route::post('update-pad-configuration', [UserController::class, 'updatePadConfiguration']);
+    Route::post('update-vital-config', [UserController::class, 'updateVitalConfig']);
+    Route::post('update-template-config', [UserController::class, 'updateTemplateConfig']);
 
 
 });
