@@ -129,6 +129,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('save-medical-record', [MedicalRecordController::class, 'saveMedicalRecord']);
     Route::post('delete-medical-record', [MedicalRecordController::class, 'deleteMedicalRecord']);
     Route::get('get-medical-records-by-appointment', [MedicalRecordController::class, 'getMedicalRecordsByAppointment']);
+    Route::get('get-medical-records-by-patient', [MedicalRecordController::class, 'getMedicalRecordsByPatient']);
 
     //Vital API Routes
     Route::post('vital/store', [VitalController::class, 'store']);

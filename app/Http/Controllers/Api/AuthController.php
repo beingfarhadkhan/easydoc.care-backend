@@ -13,12 +13,14 @@ class AuthController extends Controller
         $request->validate([
             'name' => 'required',
             'email' => 'required|email',
+            'phone' => 'required',            
             'password' => 'required|min:6'
         ]);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'phone' => $request->phone,
             'password' => bcrypt($request->password),
             'role' => 1
         ]);
@@ -36,15 +38,27 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'email' => 'required_without:phone|email',
+            'phone' => 'required_without:email',
             'password' => 'required'
         ]);
 
-        if (!auth()->attempt($request->only('email', 'password'))) {
+        // Determine credentials based on whether email or phone was provided
+        if ($request->filled('email')) {
+            $credentials = $request->only('email', 'password');
+            $user = User::where('email', $request->email)->first();
+        } else {
+            $credentials = $request->only('phone', 'password');
+            $user = User::where('phone', $request->phone)->first();
+        }
+
+        if (!auth()->attempt($credentials)) {
             return response()->json(['message' => 'Invalid login details'], 401);
         }
 
-        $user = User::where('email', $request->email)->first();
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
 
         $token = $user->createToken('auth_token')->plainTextToken;
 

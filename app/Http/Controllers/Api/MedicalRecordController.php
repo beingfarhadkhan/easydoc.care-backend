@@ -127,5 +127,27 @@ class MedicalRecordController extends Controller
         }
     }
 
+    public function getMedicalRecordsByPatient(Request $request)
+    {
+                
+        // Validate patient_id presence
+        if (!$request->has('patient_id')) {
+            return response()->json(['message' => 'patient_id is required'], 422);
+        }
+        // Find the patient
+        $patient_id = $request->patient_id;
+
+        $atc = AssignToClinic::where('user_id', auth()->user()->id)->where('clinic_id',$request->clinic_id)->first();
+
+        if($atc){
+            // Retrieve and return medical records for the patient
+            $records = MedicalRecord::where('patient_id', $patient_id)->get();
+            return response()->json([
+                'records' => $records
+            ], 200);
+        } else {
+            return response()->json(['message' => 'Unauthorized access'], 403);
+        }
+    }
 
 }

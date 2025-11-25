@@ -289,7 +289,7 @@
 @endif
 
 <!-- DENTAL CHART -->
-@if(!empty($prescription_data['dentalChart']))
+{{-- @if(!empty($prescription_data['dentalChart']))
 <div class="section-title">Dental Chart</div>
 <p><strong>Dentition Type:</strong> {{ $prescription_data['dentalChart']['dentitionType'] ?? '-' }}</p>
 @if(!empty($prescription_data['dentalChart']['selectedTeeth']))
@@ -301,7 +301,112 @@
 <p>Tooth {{ $tooth }}: {{ $exam }}</p>
 @endforeach
 @endif
+@endif --}}
+
+
+{{-- ============================== --}}
+{{-- DENTAL CHART SECTION START     --}}
+{{-- ============================== --}}
+
+@if(!empty($prescription_data['dentalChart']))
+<div class="section-title">Dental Chart</div>
+@php
+$dental = $prescription_data['dentalChart'];
+@endphp
+
+<div class="section-title">
+    DENTAL EXAMINATIONS / PAST PROCEDURES :
+</div>
+
+
+{{-- ============================ --}}
+{{-- TOOTH EXAMINATIONS (Stylized) --}}
+{{-- ============================ --}}
+
+@if(!empty($dental['examinationFindings']))
+    @foreach($dental['examinationFindings'] as $tooth => $items)
+
+        @php
+            $surfaces = !empty($dental['selectedSurfaces'][$tooth]) 
+                ? implode(', ', $dental['selectedSurfaces'][$tooth]) 
+                : null;
+
+            $examinationText = $items[0]['examination'] ?? '-';
+        @endphp
+
+        <p style="margin:2px 0;">
+            – <strong>T{{ $tooth }}</strong> 
+            @if($surfaces)
+                ({{ $surfaces }})
+            @endif
+            : {{ $examinationText }}
+        </p>
+
+    @endforeach
 @endif
+
+
+
+{{-- ============================ --}}
+{{-- ORAL FINDINGS (Stylized)     --}}
+{{-- ============================ --}}
+
+@if(!empty($dental['oralFindings']))
+    @php
+        $oral = $dental['oralFindings'][0] ?? null;
+        $oralArea = $oral['area'] ?? '';
+        $oralName = $oral['name'] ?? '-';
+    @endphp
+
+    <p style="margin:2px 0;">
+        – <strong>ORAL FINDINGS</strong>
+        @if(!empty($oralArea))
+            ({{ $oralArea }})
+        @endif
+        : {{ $oralName }}
+    </p>
+@endif
+
+@endif  {{-- END dentalChart --}}
+
+
+
+{{-- ============================ --}}
+{{-- PROCEDURES SECTION           --}}
+{{-- ============================ --}}
+
+@if(!empty($prescription_data['dentalChart']['procedures']))
+    @php
+        $procedures = $prescription_data['dentalChart']['procedures'];
+    @endphp
+
+    <p style="font-weight:bold; margin-top:10px;">Dental Procedures:</p>
+
+    <table>
+        <tr>
+            <th>Procedure</th>
+            <th>Tooth</th>
+            <th>Area</th>
+            <th>Visits</th>
+            <th>Date</th>
+            <th>Notes</th>
+        </tr>
+
+        @foreach($procedures as $p)
+            <tr>
+                <td>{{ $p['name'] ?? '-' }}</td>
+                <td>{{ $p['tooth'] ?? '-' }}</td>
+                <td>{{ $p['area'] ?? '-' }}</td>
+                <td>{{ $p['visits'] ?? '-' }}</td>
+                <td>{{ $p['date'] ?? '-' }}</td>
+                <td>{{ $p['notes'] ?? '-' }}</td>
+            </tr>
+        @endforeach
+    </table>
+@endif
+
+
+
 
 <!-- PRESCRIBED LAB TESTS -->
 @if(!empty($prescription_data['prescribedLabTests']))
@@ -325,7 +430,7 @@
 <p>{{ $prescription_data['notes'] }}</p>
 @endif
 
-<!-- DENTAL PROCEDURES -->
+{{-- <!-- DENTAL PROCEDURES -->
 @if(!empty($prescription_data['dentalProcedures']))
 <div class="section-title">Dental Procedures</div>
 <table>
@@ -343,7 +448,7 @@
 </tr>
 @endforeach
 </table>
-@endif
+@endif --}}
 
 <!-- ADVANCED EYE SECTIONS -->
 @if(!empty($prescription_data['visualAcuity']))
