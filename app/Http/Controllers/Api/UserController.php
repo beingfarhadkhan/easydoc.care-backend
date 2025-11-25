@@ -359,7 +359,7 @@ class UserController extends Controller
         return response()->json(['message' => 'Vital configuration updated successfully'], 200);
     }
 
-    public function updateTemplate(Request $request)
+    public function updateTemplateConfig(Request $request)
     {
         $user = User::find(auth()->user()->id);
 
