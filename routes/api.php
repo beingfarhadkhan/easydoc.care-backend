@@ -160,6 +160,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('update-pad-configuration', [UserController::class, 'updatePadConfiguration']);
     Route::post('update-vital-config', [UserController::class, 'updateVitalConfig']);
     Route::post('update-template-config', [UserController::class, 'updateTemplateConfig']);
+    Route::get('get-template-config', [UserController::class, 'getTemplateConfig']);
 
 
 });

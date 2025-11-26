@@ -338,7 +338,7 @@ class UserController extends Controller
         if (!$user) {
             return response()->json(['message' => 'User not found'], 404);
         }
-
+        
         $user->pad_configuration = json_encode($request->pad_configuration);
         $user->save();
 
@@ -359,18 +359,103 @@ class UserController extends Controller
         return response()->json(['message' => 'Vital configuration updated successfully'], 200);
     }
 
+    // public function updateTemplateConfig(Request $request)
+    // {
+    //     $user = User::find(auth()->user()->id);
+
+    //     if (!$user) {
+    //         return response()->json(['message' => 'User not found'], 404);
+    //     }
+
+    //     $user->template_config = json_encode($request->template_config);
+    //     $user->save();
+
+    //     return response()->json(['message' => 'Template configuration updated successfully'], 200);
+    // }
+
     public function updateTemplateConfig(Request $request)
     {
-        $user = User::find(auth()->user()->id);
+        $request->validate([
+            'template' => 'required|array',
+            'template.id' => 'required|string'
+        ]);
+
+        $user = auth()->user();
 
         if (!$user) {
             return response()->json(['message' => 'User not found'], 404);
         }
 
-        $user->template_config = json_encode($request->template_config);
+        // Get old templates
+        $config = $user->template_config
+            ? json_decode($user->template_config, true)
+            : [];
+
+        // Template ID → used as key
+        $templateId = $request->template['id'];
+
+        // Save or update template
+        $config[$templateId] = $request->template;
+
+        // Save back to database
+        $user->template_config = json_encode($config);
         $user->save();
 
-        return response()->json(['message' => 'Template configuration updated successfully'], 200);
+        return response()->json([
+            'message' => 'Template saved successfully',
+            'templates' => $config
+        ], 200);
+    }
+
+
+    // public function getTemplateConfig(Request $request)
+    // {
+    //     $user = User::find(auth()->user()->id);
+
+    //     if (!$user) {
+    //         return response()->json(['message' => 'User not found'], 404);
+    //     }
+
+    //     $templateConfig = $user->template_config ? json_decode($user->template_config, true) : null;
+
+    //     return response()->json([
+    //         'template_config' => $templateConfig
+    //     ], 200);
+    // }
+
+    public function getTemplateConfig(Request $request)
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        // Get all saved templates
+        $config = $user->template_config
+            ? json_decode($user->template_config, true)
+            : [];
+
+        // If "id" is given → return only that template
+        if ($request->has('id')) {
+
+            $id = $request->id;
+
+            if (isset($config[$id])) {
+                return response()->json([
+                    'template' => $config[$id]
+                ], 200);
+            } else {
+                return response()->json([
+                    'message' => 'Template not found'
+                ], 404);
+            }
+        }
+
+        // Otherwise → return all templates
+        return response()->json([
+            'templates' => $config
+        ], 200);
     }
 
 }
