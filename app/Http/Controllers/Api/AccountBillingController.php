@@ -28,6 +28,8 @@ class AccountBillingController extends Controller
             'no_of_admins' => 'nullable|integer',
             'no_of_staff_in_use' => 'nullable|integer',
             'no_of_staff_allowed' => 'nullable|integer',
+            'no_of_clinics_in_use' => 'nullable|integer',
+            'no_of_clinics_allowed' => 'nullable|integer',
         ]);
 
         $billing = AccountBilling::create($data);

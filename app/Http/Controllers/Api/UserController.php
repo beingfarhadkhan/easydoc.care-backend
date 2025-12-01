@@ -115,7 +115,7 @@ class UserController extends Controller
             'phone' => $request->phone,
             'password' => bcrypt($request->phone),
             // 'is_admin' => $request->is_admin,
-            'pad_configration' => json_encode($request->pad_configration),
+            'pad_configuration' => json_encode($request->pad_configuration),
             'role' => $request->role,
             'status' => $request->status,    
             'selected_clinic' => $request->clinics[0],
@@ -242,6 +242,9 @@ class UserController extends Controller
         $user->pad_configuration = $user->pad_configuration ? json_decode($user->pad_configuration, true) : null;
         $user->vital_config = $user->vital_config ? json_decode($user->vital_config, true) : null;
         $user->template_config = $user->template_config ? json_decode($user->template_config, true) : null;
+        $user->education = $user->education ? json_decode($user->education, true) : null;
+        $user->social_links = $user->social_links ? json_decode($user->social_links, true) : null;
+        $user->availability = $user->availability ? json_decode($user->availability, true) : null; 
 
         $accounts = Account::whereIn('id', function($query) use ($user) {
             $query->select('account_id')
@@ -458,4 +461,148 @@ class UserController extends Controller
         ], 200);
     }
 
+    public function removeUser(Request $request)
+    {
+        // 1. Fetch user
+        $user = User::find($request->user_id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        // 2. Check if the user is primary admin in ANY account
+        $isPrimaryAdmin = Account::where('primary_user', $user->id)->exists();
+
+        if ($isPrimaryAdmin) {
+            return response()->json([
+                'message' => 'Cannot remove this user. This user is the Primary Admin of an account.'
+            ], 403);
+        }
+
+        // 3. Remove user from assigned accounts
+        AssignToAccount::where('user_id', $user->id)->delete();
+
+        // 4. Remove user from assigned clinics
+        AssignToClinic::where('user_id', $user->id)->delete();
+
+       
+
+        return response()->json([
+            'message' => 'User removed successfully'
+        ], 200);
+    }
+
+    public function changePassword(Request $request)
+    {
+        $user = User::find(auth()->user()->id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $request->validate([
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:6',
+            'confirm_password' => 'required|string|min:6'
+        ]);
+
+        // Check current password
+        if (!\Hash::check($request->current_password, $user->password)) {
+            return response()->json(['message' => 'Current password is incorrect'], 400);
+        }
+
+        if ($request->new_password !== $request->confirm_password) {
+            return response()->json(['message' => 'New password and confirm password do not match'], 400);
+        }
+
+        // Update to new password
+        $user->password = bcrypt($request->new_password);
+        $user->save();
+
+        return response()->json(['message' => 'Password updated successfully'], 200);
+    }
+
+
+    public function updateProfilePicture(Request $request)
+    {
+        $user = User::find(auth()->user()->id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        if ($request->hasFile('profile_picture')) {
+            $file = $request->file('profile_picture');
+            $path = $file->store('profile_pictures', 'public');
+
+            $user->profile_picture = $path;
+            $user->save();
+
+            return response()->json(['message' => 'Profile picture updated successfully', 'profile_picture' => $path], 200);
+        } else {
+            return response()->json(['message' => 'No profile picture uploaded'], 400);
+        }
+    }
+
+    public function updateSignatureImage(Request $request)
+    {
+        $user = User::find(auth()->user()->id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        if ($request->hasFile('signature_image')) {
+            $file = $request->file('signature_image');
+            $path = $file->store('signature_images', 'public');
+
+            $user->signature_image = $path;
+            $user->save();
+
+            return response()->json(['message' => 'Signature image updated successfully', 'signature_image' => $path], 200);
+        } else {
+            return response()->json(['message' => 'No signature image uploaded'], 400);
+        }
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = User::find(auth()->user()->id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        // Update fields if provided
+        if ($request->has('education')) {
+            $user->education = json_encode($request->education);
+        }
+        if ($request->has('specialization')) {
+            $user->specialization = $request->specialization;
+        }
+        if ($request->has('working_since')) {
+            $user->working_since = $request->working_since;
+        }
+        if ($request->has('social_links')) {
+            $user->social_links = json_encode($request->social_links);
+        }
+                   
+        $user->save();
+
+        return response()->json(['message' => 'User profile updated successfully'], 200);
+    }
+
+    public function updateAvailability(Request $request)
+    {
+        $user = User::find(auth()->user()->id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $user->availability = json_encode($request->availability);
+        $user->save();
+
+        return response()->json(['message' => 'Availability status updated successfully'], 200);
+    }
 }

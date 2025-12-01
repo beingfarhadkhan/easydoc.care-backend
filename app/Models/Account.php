@@ -16,7 +16,8 @@ class Account extends Model
             'zip',
             'country',
             'gst',
-            'pan'
+            'pan',
+            'primary_user'
         ];
 
 

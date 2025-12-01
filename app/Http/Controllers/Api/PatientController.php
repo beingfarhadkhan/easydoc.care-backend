@@ -21,7 +21,10 @@ class PatientController extends Controller
     public function index()
     {
         $patients = Patient::all();
-        return response()->json($patients);
+        return response()->json([
+            'patient' => $patients,
+            'counts' => count($patients)
+        ]);
     }
 
     /**

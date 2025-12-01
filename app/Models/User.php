@@ -28,10 +28,17 @@ class User extends Authenticatable
         'is_admin',
         'selected_clinic',
         'selected_account',
-        'pad_configration',
+        'pad_configuration',
         'vital_config',
         'template_config',
-        
+        'education',
+        'specialization',
+        'working_since',
+        'profile_picture',
+        'signature_image',
+        'social_links',
+        'invite_link',
+        'invite_code'        
     ];
 
     /**

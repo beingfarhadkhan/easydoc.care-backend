@@ -15,7 +15,8 @@ use App\Http\Controllers\Api\MedicalRecordController;
 use App\Http\Controllers\Api\VitalController;
 use App\Http\Controllers\Api\PrescriptionController;
 use App\Http\Controllers\Api\AccountBillingController;
-use App\Models\AssignToAccount;
+use App\Http\Controllers\Api\RazorPayPaymentController;
+use App\Http\Controllers\Api\PlanController;
 
 
 
@@ -161,7 +162,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('update-vital-config', [UserController::class, 'updateVitalConfig']);
     Route::post('update-template-config', [UserController::class, 'updateTemplateConfig']);
     Route::get('get-template-config', [UserController::class, 'getTemplateConfig']);
+    Route::post('remove-user', [UserController::class, 'removeUser']); //only admin access
+    Route::post('update-profile', [UserController::class, 'updateProfile']);
+    Route::post('change-password', [UserController::class, 'changePassword']);
+    Route::post('update-availability', [UserController::class, 'updateAvailability']);
 
+
+    // Razorpay Payment Routes
+    Route::post('/create-order', [RazorPayPaymentController::class, 'createOrder']);
+    Route::post('/verify-payment', [RazorPayPaymentController::class, 'verifyPayment']);
+
+    // Plan Routes
+    Route::get('/get-plan', [PlanController::class, 'getPlan']);
 
 });
 

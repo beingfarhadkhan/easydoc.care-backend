@@ -36,6 +36,7 @@ class AccountController extends Controller
             'country' => $request->country,
             'gst' => $request->gst,
             'pan' => $request->pan,
+            'primary_user' => auth()->user()->id,
             'created_at' => now(),
             'updated_at' => now()
         ]);
@@ -132,6 +133,11 @@ class AccountController extends Controller
 
     public function removeUserFromAccount(Request $request)
     {
+         $account = Account::find($request->account_id);
+
+        if (!$account) {
+            return response()->json(['message' => 'Account not found'], 404);
+        }
         
         $record = AssignToAccount::where('user_id', $request->user_id)
             ->where('account_id', $request->account_id)
@@ -141,11 +147,17 @@ class AccountController extends Controller
             return response()->json(['message' => 'User is not assigned to the account'], 204);
         }
 
-        AssignToAccount::where('user_id', $request->user_id)
+        if($record->user_id == $account->primary_user){
+            return response()->json(['message' => 'Cannot remove primary user from the account'], 400);
+        }else
+        
+        {
+            AssignToAccount::where('user_id', $request->user_id)
             ->where('account_id', $request->account_id)
             ->delete();
 
-        return response()->json(['message' => 'User removed from account successfully'], 200);
+             return response()->json(['message' => 'User removed from account successfully'], 200);
+        }
     }
 
     public function getAllAccountsByUser(Request $request)
