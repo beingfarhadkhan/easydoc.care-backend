@@ -28,24 +28,49 @@ class ReceiptController extends Controller
     {              
         $existing = Receipt::where('appointment_id', $request->appointment_id)->first();
         
-        if ($existing) {
-        $existing->update([
-            'status' => $request->status,
-            'particulars' => json_encode($request->particulars),
-            'payment_mode' => json_encode($request->payment_mode),
-            'remarks' => $request->remarks,
-            'additional_discount' => $request->additional_discount,
-            'updated_at' => now(),
-        ]);
+        if ($existing) {            
+            $existing->update([
+                'status' => $request->status,
+                'particulars' => json_encode($request->particulars),
+                'payment_mode' => json_encode($request->payment_mode),
+                'remarks' => $request->remarks,
+                'additional_discount' => $request->additional_discount,
+                'updated_at' => now(),
+            ]);
 
-        $pdf_url = $this->generatePdf($existing->id);
-        
-        $existing->update([
-            'pdf_url' => $pdf_url,
-            'updated_at' => now(),
-        ]);
+            $clinic = Clinic::find($request->clinic_id);
+            if (!$clinic) {
+                return response()->json(['message' => 'Clinic not found'], 201);
+            } 
 
-        return response()->json([
+            $pdf_url = $this->generatePdf($existing->id);
+            
+            $existing->update([
+                'pdf_url' => $pdf_url,
+                'updated_at' => now(),
+            ]);
+
+            foreach ($request->payment_mode as $payment) {
+                $existingPayment = Payment::where('receipt_id', $existing->id)
+                    ->where('payment_mode', $payment['type'])
+                    ->where('amount', $payment['amount'])
+                    ->first();
+                
+                if (!$existingPayment) {
+                    Payment::create([
+                        'receipt_id'   => $existing->id,
+                        'clinic_id'    => $request->clinic_id,
+                        'account_id'  => $clinic->account_id,
+                        'payment_mode'   => $payment['type'],
+                        'amount'       => $payment['amount'],
+                        'transaction_date' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+            }
+
+            return response()->json([
             'message' => 'Receipt updated and PDF regenerated successfully',
             'receipt' => $existing->fresh(),
             ], 200);
@@ -93,10 +118,7 @@ class ReceiptController extends Controller
                 'transaction_date' => now(),
                 'created_at' => now(),
                 'updated_at' => now()
-            ]);
-
-            
-
+            ]);          
         }
 
         return response()->json([

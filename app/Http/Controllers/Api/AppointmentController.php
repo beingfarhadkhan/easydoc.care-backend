@@ -156,6 +156,12 @@ class AppointmentController extends Controller
             ->where('check_in_status',2)
             ->get();
         
+          $checkin = $checkin->map(function ($appointment) {
+            $doctor = User::find($appointment->doctor_id);
+            $appointment->doctor_name = $doctor ? $doctor->name : null;
+            return $appointment;
+        });
+        
         $completed = Appointment::with(['patient:id,uhid,name,phone,gender,age'])
             ->where('clinic_id', $request->clinic_id)
             ->whereDate('appointment_date', now()->toDateString())

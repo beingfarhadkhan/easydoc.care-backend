@@ -60,7 +60,7 @@ class AccountController extends Controller
             'no_of_docs_in_use' => 1,
             'no_of_docs_allowed' => $plan->doctor_limit,
             'no_of_admins_in_use' => 1,
-            'no_of_admins_in_allowed' => $plan->admin_limit,
+            'no_of_admins_allowed' => $plan->admin_limit,
             'no_of_staff_in_use' => 0,
             'no_of_staff_allowed' => $plan->staff_limit,
             'created_at' => now(),

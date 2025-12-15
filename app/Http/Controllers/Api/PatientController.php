@@ -153,21 +153,19 @@ class PatientController extends Controller
     {
         $search = $request->search;
         // $patient = PatientToAccount::where('account_id', $request->account_id)->pluck('patient_id');
-        // $recommendPatients = Patient::whereIn('id', $patient)
-        //                     ->where(function ($query) use ($search) {
-        //                     $query->whereRaw('LOWER(name) LIKE ?', [strtolower($search) . '%'])
-        //                         ->orWhereRaw('LOWER(email) LIKE ?', [strtolower($search) . '%'])
-        //                         ->orWhereRaw('LOWER(phone) LIKE ?', [strtolower($search) . '%']);
-        //                     })->get();
+        $recommendPatients = Patient::where(function ($query) use ($search) {
+                            $query->whereRaw('LOWER(name) LIKE ?', [strtolower($search) . '%'])
+                                ->orWhereRaw('LOWER(email) LIKE ?', [strtolower($search) . '%'])
+                                ->orWhereRaw('LOWER(phone) LIKE ?', [strtolower($search) . '%']);
+                            })->get();
         
     
 
-        $accountId = $request->account_id;
-        $recommendPatients = Patient::where('name', 'like', ''.$search.'%')
-            ->whereHas('accounts', function($q) use ($accountId) {
-                $q->where('account_id', $accountId);
-            })
-            ->get();
+        // $recommendPatients = Patient::where('name', 'like', ''.$search.'%')
+        //     ->whereHas('accounts', function($q) use ($accountId) {
+        //         $q->where('account_id', $accountId);
+        //     })
+        //     ->get();
 
 
 
@@ -225,6 +223,38 @@ class PatientController extends Controller
             'patient_id' => $patient->id,
             'patient' => $patient,
         ], 200);
+    }
+
+    public function addPatientToAccount(Request $request)
+    {
+        $patient = Patient::where('id', $request->patient_id)->first();
+        if (!$patient) {
+            return response()->json(['message' => 'Patient not found'], 404);
+        }
+
+        $account = Account::where('id', $request->account_id)->first();
+        if (!$account) {
+            return response()->json(['message' => 'Account not found'], 404);
+        }
+
+        $existingRecord = PatientToAccount::where('patient_id', $request->patient_id)
+            ->where('account_id', $request->account_id)
+            ->first();
+
+        if ($existingRecord) {
+            return response()->json(['message' => 'Patient already exists in this account'], 409);
+        }
+
+        PatientToAccount::create([
+            'patient_id' => $request->patient_id,
+            'account_id' => $request->account_id,
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+
+        return response()->json([
+            'message' => 'Patient added to account successfully'
+        ], 201);
     }
 
 }

@@ -38,7 +38,8 @@ class User extends Authenticatable
         'signature_image',
         'social_links',
         'invite_link',
-        'invite_code'        
+        'invite_code',
+        'google_review'       
     ];
 
     /**

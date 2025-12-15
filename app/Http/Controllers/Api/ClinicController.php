@@ -93,7 +93,7 @@ class ClinicController extends Controller
             return response()->json(['message' => 'Clinic not found'], 404);
         }
 
-        clinic::where('id',$request->id) ->update([
+        clinic::where('id',$request->clinic_id) ->update([
             'name' => $request->name,
             'address' => $request->address,
             'phone' => $request->phone,

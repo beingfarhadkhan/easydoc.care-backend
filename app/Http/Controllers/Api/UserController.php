@@ -151,7 +151,36 @@ class UserController extends Controller
 
     }
 
-    
+    public function updateUserManagement(Request $request)
+    {
+        $user = User::find($request->user_id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $user->name = $request->name;
+        $user->email = $request->email;
+        $user->phone = $request->phone;
+        $user->role = $request->role;
+        $user->status = $request->status;
+        $user->pad_configuration = json_encode($request->pad_configuration);
+        $user->save();
+
+        // Update clinic assignments
+        AssignToClinic::where('user_id', $user->id)->delete();
+        foreach ($request->clinics as $clinic) {
+            AssignToClinic::create([
+                'user_id' => $user->id,
+                'clinic_id' => $clinic,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
+
+        return response()->json(['message' => 'User updated successfully'], 200);
+    }
+
     public function getUserManagement(Request $request)
     {
         // Validate account
@@ -244,7 +273,8 @@ class UserController extends Controller
         $user->template_config = $user->template_config ? json_decode($user->template_config, true) : null;
         $user->education = $user->education ? json_decode($user->education, true) : null;
         $user->social_links = $user->social_links ? json_decode($user->social_links, true) : null;
-        $user->availability = $user->availability ? json_decode($user->availability, true) : null; 
+        $user->availability = $user->availability ? json_decode($user->availability, true) : null;
+        $user->google_review = $user->google_review ? json_decode($user->google_review, true) : null; 
 
         $accounts = Account::whereIn('id', function($query) use ($user) {
             $query->select('account_id')
@@ -585,7 +615,7 @@ class UserController extends Controller
         }
         if ($request->has('social_links')) {
             $user->social_links = json_encode($request->social_links);
-        }
+        }        
                    
         $user->save();
 
@@ -604,5 +634,19 @@ class UserController extends Controller
         $user->save();
 
         return response()->json(['message' => 'Availability status updated successfully'], 200);
+    }
+
+    public function updateGoogleReview(Request $request)
+    {
+        $user = User::find(auth()->user()->id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $user->google_review = json_encode($request->google_review);
+        $user->save();
+
+        return response()->json(['message' => 'Google review link updated successfully'], 200);
     }
 }

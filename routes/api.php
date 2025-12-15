@@ -38,7 +38,6 @@ Route::post('update-password', [AuthController::class, 'updatePassword']);
 
 
 
-// Route::post('clinic/update', [ClinicController::class, 'update']);
 // Route::get('clinic/{id}', [ClinicController::class, 'show']);
 // Route::apiResource('clinic', ClinicController::class);
 // Route::post('get-all-users-by-clinic', [ClinicController::class, 'getAllUsersByClinic']);
@@ -77,6 +76,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('update-selected-clinic', [ClinicController::class, 'updateSelectedClinic']); 
     Route::post('update-selected-account', [ClinicController::class, 'updateSelectedAccount']);
     Route::post('upload-clinic-logo', [ClinicController::class, 'uploadClinicLogo']);
+    Route::post('clinic/update', [ClinicController::class, 'update']);  
+
    
 
 
@@ -90,6 +91,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('get-all-patients-by-clinic', [PatientController::class, 'getAllPatientsByClinic']); 
     Route::get('get-all-patients-by-account', [PatientController::class, 'getAllPatientByAccount']); 
     Route::get('get-patient-by-phone', [PatientController::class, 'getPatientByPhone']); 
+    Route::post('add-patient-to-account', [PatientController::class, 'addPatientToAccount']);
 
     //appointment API Routes
     Route::post('appointment/store', [AppointmentController::class, 'store']);
@@ -166,6 +168,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('update-profile', [UserController::class, 'updateProfile']);
     Route::post('change-password', [UserController::class, 'changePassword']);
     Route::post('update-availability', [UserController::class, 'updateAvailability']);
+    Route::post('update-google-review', [UserController::class, 'updateGoogleReview']);
+    
 
 
     // Razorpay Payment Routes
