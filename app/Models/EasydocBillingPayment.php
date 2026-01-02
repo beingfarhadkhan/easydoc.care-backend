@@ -8,12 +8,15 @@ class EasydocBillingPayment extends Model
 {
     protected $table = 'easydoc_billing_payments';
     protected $fillable = [
-        'receipt_id',
+        'invoice_id',
         'user_id',
+        'account_id',
         'razorpay_order_id',
         'rozarpay_payment_id',
         'amount',
         'status',
-        'captured'
+        'captured',
+        'invoice_data',
+        'invoice_date'
     ];
 }

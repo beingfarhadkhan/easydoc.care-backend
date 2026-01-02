@@ -105,8 +105,12 @@ class PrescriptionController extends Controller
             'prescription_url' => $pdf_url,
             'updated_at' => now()
         ]);
+
+        $prescription = Prescription:: where('id',$prescription->id)->first();
+        
         return response()->json([
             'message' => 'Prescription saved successfully',
+            'prescription' => $prescription
         ], 201);
     }
 

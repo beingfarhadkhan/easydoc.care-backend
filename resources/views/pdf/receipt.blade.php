@@ -1,77 +1,3 @@
-{{-- <!doctype html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Receipt #{{ $receipt->receipt_no  }}</title>
-    <style>
-        body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 14px; }
-        .header { margin-bottom: 20px; }
-        .section { margin-bottom: 12px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 6px; border: 1px solid #ddd; text-align: left; }
-        .footer { margin-top: 20px; font-size: 12px; color: #666; }
-    </style>
-</head>
-<body>
-    <div class="header"><h2>Receipt #{{ $receipt->receipt_no  }}</h2></div>
-    <div class="section"><strong>Clinic:</strong> {{ $clinic->name ?? '-' }}</div>
-    <div class="section"><strong>Patient:</strong> {{ $patient->name ?? $patient->full_name ?? '-' }}</div>
-    <div class="section"><strong>Appointment:</strong> {{ $appointment->id ?? '-' }}</div>
-
-    <div class="section">
-        <strong>Particulars</strong>
-        @if(!empty($particulars))
-            <table>
-                <thead>
-                    <tr><th>Quantity</th><th>Service Name</th><th>Service Fee</th><th>Discount %</th></tr>
-                </thead>
-                <tbody>
-                    @foreach($particulars as $p)
-                        <tr>
-                            <td>{{ is_array($p) ? ($p['quantity'] ?? '') : $p }}</td>
-                            <td>{{ is_array($p) ? ($p['service_name'] ?? '') : $p }}</td>
-                            <td>{{ is_array($p) ? ($p['service_fee'] ?? '') : $p }}</td>
-                            <td>{{ is_array($p) ? ($p['discount_percent'] ?? '') : $p }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @else
-            <div>-</div>
-        @endif
-    </div>
-
-    <div class="section">
-        <strong>Payment Mode</strong>
-        @if(is_array($payment_mode) && count($payment_mode) > 0)
-             <table>
-                <thead>
-                    <tr><th>Type</th><th>Amount</th><th>Transaction Id</th></tr>
-                </thead>
-                <tbody>
-                    @foreach($payment_mode as $m)
-                    <tr>
-                        <td>{{ is_array($m) ? ($m["type"] ?? "") : $m }}</td>
-                        <td>{{ is_array($m) ? ($m["amount"] ?? "") : $m }}</td>
-                        <td>{{ is_array($m) ? ($m["transaction_id"] ?? "") : '' }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-             </table>
-            
-        @else
-            <div>{{ $receipt->payment_mode ?? '-' }}</div>
-        @endif
-    </div>
-
-    <div class="section"><strong>Status:</strong> {{ $receipt->status ?? '-' }}</div>
-    <div class="section"><strong>Remarks:</strong> {{ $receipt->remarks ?? '-' }}</div>
-
-    <div class="footer">Generated: {{ now()->toDateTimeString() }}</div>
-</body>
-</html> --}}
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -194,11 +120,11 @@
                 @endif
             </td>
             <td class="company-info" style="width:50%; border: none;">
-                <strong>{{ $accountName->display_name ?? '-' }}</strong><br>
-                <b>Address:</b> {{ $accountName->address ?? 'Address' }}<br>
-                    {{ $accountName->city ?? '' }} {{ $accountName->state ?? '' }} {{ $accountName->zip ?? '' }}<br>
-                    {{ $accountName->country ?? '' }}<br>
-                <b>Phone:</b> {{ $accountName->phone ?? '' }}<br>
+                <strong>{{ $accountName->display_name ?? '' }}</strong><br>
+                <b>Address:</b> {{ $accountName->address ?? '' }}<br>
+                    {{ $accountName->city ?? '' }}, {{ $accountName->state ?? '' }}, {{ $accountName->zip ?? '' }}<br>
+                    {{-- {{ $accountName->country ?? '' }}<br> --}}
+                <b>Phone:</b> {{ $accountPhone ?? '' }}<br>
                 <b>GSTIN:</b> {{ $accountName->gst ?? '' }}
             </td>
         </tr>
@@ -259,10 +185,8 @@
         <tr>
             <td>
                 <b>Name:</b>{{ $patient->name ?? $patient->full_name ?? '-' }}<br>
-                <b>Address:</b>{{ $patient->address ?? 'Address' }}<br>
-                    {{ $patient->city ?? '' }}<br>
-                    {{ $patient->state ?? '' }} {{ $patient->zip ?? '' }}<br>
-                <b>Phone:</b>{{ $patient->phone ?? '' }}
+                <b>Phone:</b>{{ $patient->phone ?? '' }}<br>
+                <b>Address:</b>{{ $patient->address ?? 'Address' }} {{ $patient->city ?? '' }}<br> {{ $patient->state ?? '' }} {{ $patient->zip ?? '' }}
             </td>
         </tr>
         
@@ -284,15 +208,26 @@
             @if(!empty($particulars))
                     @foreach($particulars as $p)
                         <tr>
-                            <td>{{ is_array($p) ? ($p['service_name'] ?? '') : $p }}</td>
-                            <td>{{ is_array($p) ? ($p['quantity'] ?? '') : $p }}</td>
-                            <td>{{ is_array($p) ? ($p['service_fee'] ?? '') : $p }}</td>
-                            <td>{{ is_array($p) ? ($p['discount_percent'] ?? '') : $p }}</td>
-                            <td>{{ is_array($p) ? 
-                                ($p['quantity'] * $p['service_fee'] * (1 - ($p['discount_percent'] / 100))) : $p 
-                            }}</td>
-                            {{-- <td>{{ is_array($p) ? ($p['sub_total'] ?? '') : $p }}</td> --}}
+                            <td class="text-center">
+                                {{ is_array($p) ? ($p['service_name'] ?? '') : $p }}
+                            </td>
+                            <td class="text-center">
+                                {{ is_array($p) ? ($p['quantity'] ?? '') : $p }}
+                            </td>
+                            <td class="text-center">
+                                {{ is_array($p) ? ($p['service_fee'] ?? '') : $p }}
+                            </td>
+                            <td class="text-center">
+                                {{ is_array($p) ? ($p['discount_percent'] ?? '') : $p }}
+                            </td>
+                            <td class="text-center">
+                                {{ is_array($p)
+                                    ? ($p['quantity'] * $p['service_fee'] * (1 - ($p['discount_percent'] / 100)))
+                                    : $p
+                                }}
+                            </td>
                         </tr>
+
                     @endforeach
             @else
                 <tr><td colspan="7" class="text-center">No data available</td></tr>
@@ -314,17 +249,17 @@
                         }
                     }
                 @endphp
-                <td>{{ number_format($subTotal, 2) }}</td>
+                <td class="text-center">₹ {{ number_format($subTotal, 2) }}</td>
 
             </tr>
             <tr >
                 <td colspan="4" class="text-right">Additional Discount</td>
-                <td>{{ $additional_discount ?? '-' }}</td>
+                <td class="text-center">₹ {{ $additional_discount ?? '-' }}</td>
                 
             </tr>
             <tr class="highlight">
                 <td colspan="4" class="text-right">Receipt Total</td>
-                <td>{{ number_format($subTotal - ($additional_discount ?? 0), 2) }}</td>
+                <td class="text-center">₹ {{ number_format($subTotal - ($additional_discount ?? 0), 2) }}</td>
             </tr>
         </tfoot>
     </table>
@@ -359,12 +294,30 @@
             <th>Remarks</th>
         </tr>
         <tr>
-            <td>{{ $receipt->remarks ?? '-' }}</td>
+            <td>{{ $receipt->remarks}}</td>
         </tr>
     </table>
 
     <div class="footer">
-        ** This is a computer generated invoice and does not require a signature **
+        <table style="width: 100%; margin-top: 10px; border: none;">
+            <tr style="border: none;">
+                <td style="width: 50%; border: none; text-align: left; vertical-align: top;">
+                    <div>
+                        <div> {{ $docSign ?? '' }}</div>
+                        <div style="margin-bottom: 5px;">_______________________</div>
+                        <div><b>Dr. {{ $doctorName ?? 'Doctor Name' }}</b></div>
+                        <div><b>{{ $clinic->name ?? 'Clinic Name' }}</b></div>
+                        <div>{{ $clinic->address ?? '' }}</div>
+                        <div>{{ $clinic->city ?? '' }}, {{ $clinic->state ?? '' }} {{ $clinic->zip ?? '' }}</div>
+                    </div>
+                </td>
+                <td style="width: 50%; border: none;"></td>
+            </tr>
+        </table>
+
+        <p style="margin-top: 5px; font-size: 12px; color: #666;">
+            Thank you for your visit.
+        </p>
     </div>
 
 </body>

@@ -168,9 +168,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('update-profile', [UserController::class, 'updateProfile']);
     Route::post('change-password', [UserController::class, 'changePassword']);
     Route::post('update-availability', [UserController::class, 'updateAvailability']);
+    Route::post('update-profile-picture', [UserController::class, 'updateProfilePicture']);
+    Route::post('update-signature', [UserController::class, 'updateSignatureImage']);
     Route::post('update-google-review', [UserController::class, 'updateGoogleReview']);
+    Route::post('update-advice', [UserController::class, 'updateAdvice']);
     
-
+    
 
     // Razorpay Payment Routes
     Route::post('/create-order', [RazorPayPaymentController::class, 'createOrder']);
@@ -178,6 +181,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Plan Routes
     Route::get('/get-plan', [PlanController::class, 'getPlan']);
+    Route::get('/get-addon', [PlanController::class, 'getAddon']);
+
+     
 
 });
-
+Route::post('/razorpay-webhook', [RazorPayPaymentController::class, 'razorpayWebhook']);
+//  Route::match(['get', 'post'], '/razorpay-webhook', [
+//     PaymentHandleRazorPayController::class,
+//     'razorpayWebhook'
+// ]);

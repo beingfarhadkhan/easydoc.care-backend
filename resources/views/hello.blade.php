@@ -1,65 +1,49 @@
-<button class="btn btn-primary" id="payNowBtn">Pay Now</button>
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Buy Plan</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+
+@if(session('success'))
+    <p style="color:green">{{ session('success') }}</p>
+@endif
+
+@if(session('error'))
+    <p style="color:red">{{ session('error') }}</p>
+@endif
+
+<button id="payBtn">Buy Plan ₹{{ $amount }}</button>
+
+<form id="payment-form" action="{{ url('/payment-success') }}" method="POST">
+    @csrf
+    <input type="hidden" name="razorpay_payment_id" id="razorpay_payment_id">
+    <input type="hidden" name="razorpay_order_id" id="razorpay_order_id">
+    <input type="hidden" name="razorpay_signature" id="razorpay_signature">
+</form>
 
 <script>
-document.getElementById("payNowBtn").onclick = function () {
-
-    let billingData = {
-        amount: 500,          // Amount entered by user or bill amount
-        user_id: "{{ auth()->user()->id }}", 
-        receipt_id: "{{ $receipt_id }}" // Billing Receipt ID
-    };
-
-    fetch("/create-order", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-TOKEN": "{{ csrf_token() }}"
-        },
-        body: JSON.stringify(billingData)
-    })
-    .then(res => res.json())
-    .then(data => {
-
-        var options = {
-            "key": data.key,
-            "amount": data.amount,
-            "currency": "INR",
-            "name": "ERM",
-            "description": "Payment for Receipt #" + billingData.receipt_id,
-            "order_id": data.order_id,
-
-            "handler": function (response) {
-                verifyPayment(response);
-            },
-
-            "theme": {
-                "color": "#0d6efd"
-            }
-        };
-
-        var rzp = new Razorpay(options);
-        rzp.open();
-    });
+var options = {
+    "key": "{{ $razorpayKey }}",
+    "amount": "{{ $amount * 100 }}",
+    "currency": "INR",
+    "name": "EasyDoc - Starter Plan",
+    "description": "Buy Subscription",
+    "order_id": "{{ $orderId }}",
+    "handler": function (response){
+        document.getElementById('razorpay_payment_id').value = response.razorpay_payment_id;
+        document.getElementById('razorpay_order_id').value = response.razorpay_order_id;
+        document.getElementById('razorpay_signature').value = response.razorpay_signature;
+        document.getElementById('payment-form').submit();
+    }
 };
 
-
-function verifyPayment(response) {
-    fetch("/verify-payment", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-TOKEN": "{{ csrf_token() }}"
-        },
-        body: JSON.stringify(response)
-    })
-    .then(res => res.json())
-    .then(data => {
-        alert("Payment Successful!");
-        location.reload();
-    })
-    .catch(err => {
-        alert("Payment Failed!");
-    });
-}
+document.getElementById('payBtn').onclick = function(){
+    var rzp = new Razorpay(options);
+    rzp.open();
+};
 </script>
+
+</body>
+</html>

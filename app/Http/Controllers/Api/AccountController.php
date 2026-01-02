@@ -26,6 +26,21 @@ class AccountController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->gst && Account::where('gst', $request->gst)->exists()) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'GST already exists'
+            ], 422);
+        }
+    
+        if ($request->pan && Account::where('pan', $request->pan)->exists()) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'PAN already exists'
+            ], 422);
+        }
+
+
         $account = Account::create([
             'legal_name' => $request->legal_name,
             'display_name' => $request->display_name,
@@ -63,6 +78,8 @@ class AccountController extends Controller
             'no_of_admins_allowed' => $plan->admin_limit,
             'no_of_staff_in_use' => 0,
             'no_of_staff_allowed' => $plan->staff_limit,
+            'no_of_clinics_in_use' => 1,
+            'no_of_clinics_allowed' =>$plan->clinic_limit,
             'created_at' => now(),
             'updated_at' => now()
         ]);

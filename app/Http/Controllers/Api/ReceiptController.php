@@ -9,6 +9,7 @@ use App\Models\Clinic;
 use App\Models\Patient;
 use App\Models\Appointment;
 use App\Models\AssignToClinic;
+use App\Models\AssignToAccount;
 use App\Models\User;
 use App\Models\Account;
 use App\Models\Payment;
@@ -41,7 +42,7 @@ class ReceiptController extends Controller
             $clinic = Clinic::find($request->clinic_id);
             if (!$clinic) {
                 return response()->json(['message' => 'Clinic not found'], 201);
-            } 
+            }
 
             $pdf_url = $this->generatePdf($existing->id);
             
@@ -121,8 +122,11 @@ class ReceiptController extends Controller
             ]);          
         }
 
+        $receipt = Receipt::where('id',$receipt->id)->first();
+
         return response()->json([
             'message' => 'Receipt created successfully',
+            'receipt' => $receipt
             ], 201);
     }
     public function show($id)
@@ -155,10 +159,15 @@ class ReceiptController extends Controller
         if(!$receipts){
             return response()->json(['message' => 'No receipts found for this appointment'], 404); 
         } 
+
+        $patient = Patient::find($receipts->patient_id);
         
         return response()->json([
             'clinic_id'=> $receipts->clinic_id,
-            'patient_id' => $receipts->patient_id,
+            'patient_id' => $patient->id,
+            'patient_name' => $patient->name,
+            'patient_uhid' => $patient->uhid,
+            'patient_contact' => $patient->phone,
             'appointment_id' => $receipts->appointment_id,
             'status' => $receipts->status,
             'particulars' => json_decode($receipts->particulars, true),
@@ -385,6 +394,13 @@ class ReceiptController extends Controller
         $additional_discount = $receipt->additional_discount ?? 0;
         $accountId = $clinic->account_id;
         $accountName = Account::find($accountId);
+        $assignToAccount = AssignToAccount::where('account_id', $accountId)->first();
+        $user = $assignToAccount ? User::find($assignToAccount->user_id) : null;
+        $accountPhone = $user ? $user->phone : null;
+        $doctor = User::find(Appointment::find($receipt->appointment_id)->doctor_id);
+        $docSign = $doctor ? $doctor->signature_image : null;
+        $doctorName = $doctor ? $doctor->name : null;
+        
         // Path to store PDFs
         $uploadDir = public_path('receipts');
         if (!file_exists($uploadDir)) {
@@ -402,7 +418,7 @@ class ReceiptController extends Controller
 
         // Generate PDF with DOMPDF
         $pdf = PDF::loadView('pdf.receipt', compact(
-            'receipt', 'clinic', 'patient', 'appointment', 'particulars', 'payment_mode', 'accountName', 'additional_discount',
+            'receipt', 'clinic', 'patient', 'appointment', 'particulars', 'payment_mode', 'accountName', 'additional_discount','accountPhone','doctorName','docSign',
         ))->setPaper('a4', 'portrait');
 
         // Save the generated file
@@ -419,28 +435,64 @@ class ReceiptController extends Controller
 
 
 
+    // private function generateReceiptNo($clinicId, $accountId)
+    // {
+    //     $year = date('Y');
+
+    //     // Find last receipt for this clinic in this year
+    //     $lastReceipt = Receipt::where('clinic_id', $clinicId)
+    //         ->whereYear('created_at', $year)
+    //         ->orderBy('id', 'desc')
+    //         ->first();
+
+    //     // Determine next sequence number
+    //     $nextNumber = 1;
+    //     if ($lastReceipt && preg_match('/(\d{5})$/', $lastReceipt->receipt_no, $matches)) {
+    //         $nextNumber = intval($matches[1]) + 1;
+    //     }
+
+    //     // Format sequence as 5-digit padded number
+    //     $sequence = str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+
+    //     // Final format: EasyDoc-FY2025-23-00001  select it from 1april 
+    //     return "EasyDoc-FY{$year}-{$accountId}-{$sequence}";
+    // }
+
     private function generateReceiptNo($clinicId, $accountId)
     {
-        $year = date('Y');
+        $now = now();
 
-        // Find last receipt for this clinic in this year
+        // Determine Financial Year start year
+        // FY starts from 1st April
+        if ($now->month >= 4) {
+            $fyYear = $now->year;       // FY2025
+            $fyStartDate = "{$fyYear}-04-01";
+            $fyEndDate   = ($fyYear + 1) . "-03-31";
+        } else {
+            $fyYear = $now->year - 1;   // FY2024
+            $fyStartDate = "{$fyYear}-04-01";
+            $fyEndDate   = $now->year . "-03-31";
+        }
+
+        // Find last receipt in the same financial year
         $lastReceipt = Receipt::where('clinic_id', $clinicId)
-            ->whereYear('created_at', $year)
+            ->whereBetween('created_at', [$fyStartDate, $fyEndDate])
             ->orderBy('id', 'desc')
             ->first();
 
-        // Determine next sequence number
+        // Sequence reset every FY
         $nextNumber = 1;
         if ($lastReceipt && preg_match('/(\d{5})$/', $lastReceipt->receipt_no, $matches)) {
-            $nextNumber = intval($matches[1]) + 1;
+            $nextNumber = (int) $matches[1] + 1;
         }
 
-        // Format sequence as 5-digit padded number
+        // Pad sequence
         $sequence = str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
 
-        // Final format: 23EMR202500001
-        return "{$accountId}EMR{$year}{$sequence}";
+        // EXACT format you want
+        return "EasyDoc-FY{$fyYear}-{$accountId}-{$sequence}";
     }
+
 
     public function getPaymentByDoctor(Request $request)
     {

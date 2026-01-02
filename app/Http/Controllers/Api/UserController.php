@@ -561,17 +561,21 @@ class UserController extends Controller
             return response()->json(['message' => 'User not found'], 404);
         }
 
-        if ($request->hasFile('profile_picture')) {
             $file = $request->file('profile_picture');
-            $path = $file->store('profile_pictures', 'public');
+            $uploadPath = public_path('docimages');
+            if (!file_exists($uploadPath)) {
+                mkdir($uploadPath, 0777, true);
+            }
 
-            $user->profile_picture = $path;
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move($uploadPath, $filename);
+            $fileUrl = url('images/' . $filename);
+
+            $user->profile_picture = $filename;
             $user->save();
 
-            return response()->json(['message' => 'Profile picture updated successfully', 'profile_picture' => $path], 200);
-        } else {
-            return response()->json(['message' => 'No profile picture uploaded'], 400);
-        }
+            return response()->json(['message' => 'Profile picture updated successfully', 'profile_picture' => $filename,
+            'file_url' => $fileUrl], 200);
     }
 
     public function updateSignatureImage(Request $request)
@@ -582,17 +586,22 @@ class UserController extends Controller
             return response()->json(['message' => 'User not found'], 404);
         }
 
-        if ($request->hasFile('signature_image')) {
-            $file = $request->file('signature_image');
-            $path = $file->store('signature_images', 'public');
+        $file = $request->file('signature');
+            $uploadPath = public_path('docimages');
+            if (!file_exists($uploadPath)) {
+                mkdir($uploadPath, 0777, true);
+            }
 
-            $user->signature_image = $path;
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move($uploadPath, $filename);
+            $fileUrl = url('images/' . $filename);
+
+            $user->signature_image = $filename;
             $user->save();
 
-            return response()->json(['message' => 'Signature image updated successfully', 'signature_image' => $path], 200);
-        } else {
-            return response()->json(['message' => 'No signature image uploaded'], 400);
-        }
+            return response()->json(['message' => 'Signature image updated successfully', 'signature_image' => $filename,
+            'file_url' => $fileUrl], 200);
+           
     }
 
     public function updateProfile(Request $request)
@@ -649,4 +658,19 @@ class UserController extends Controller
 
         return response()->json(['message' => 'Google review link updated successfully'], 200);
     }
+
+
+    public function updateAdvice(Request $request)
+    {
+        $user = User::find(auth()->user()->id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $user->advice = json_encode($request->advice);
+        $user->save();
+
+        return response()->json(['message' => 'Advices updated successfully'], 200);
+    }   
 }

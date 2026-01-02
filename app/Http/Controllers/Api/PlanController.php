@@ -10,7 +10,16 @@ class PlanController extends Controller
 {
     public function getPlan(Request $request)
     {
-        $plan = Plan::where('id', $request->plan_id)->first();
+        $plan = Plan::where('type',1)->get();
+        if ($plan) {
+            return response()->json([
+                'data' => $plan
+            ]);    
+        }
+    }
+    public function getAddon(Request $request)
+    {
+        $plan = Plan::where('type',2)->get();
         if ($plan) {
             return response()->json([
                 'data' => $plan
