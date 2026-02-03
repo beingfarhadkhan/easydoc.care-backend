@@ -23,6 +23,11 @@ class Appointment extends Model
     {
         return $this->belongsTo(Patient::class, 'patient_id');
     }
+    
+    public function doctor()
+    {
+        return $this->belongsTo(User::class, 'doctor_id');
+    }
 
     public function clinic()
     {
@@ -33,4 +38,6 @@ class Appointment extends Model
     {
         return $this->hasOne(Prescription::class, 'appointment_id');
     }
+
+    
 }

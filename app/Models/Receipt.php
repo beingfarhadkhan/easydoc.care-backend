@@ -16,6 +16,8 @@ class Receipt extends Model
         'status',
         'particulars',
         'payment_mode',
+        'adv_payment_mode',
+        'advance_amount',
         'pdf_url',
         'additional_discount',
         'remarks',
@@ -27,4 +29,10 @@ class Receipt extends Model
     {
         return $this->belongsTo(Appointment::class);
     }
+    
+    public function patient()
+    {
+        return $this->belongsTo(Patient::class, 'patient_id');
+    }
 }
+    

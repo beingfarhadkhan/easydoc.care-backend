@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Service;
 use App\Models\Clinic;
 use App\Models\AssignToClinic;
+use App\Models\Inventory;
 
 
 class ServiceController extends Controller
@@ -123,8 +124,9 @@ class ServiceController extends Controller
     //Update a service
     public function update(Request $request)
     {
-        $service = Service::find($request->service_id)
-        ->where('doctor_id', auth()->user()->id);
+        $service = Service::where('id',$request->service_id)
+        ->where('doctor_id', auth()->user()->id)->first();
+
         if (!$service) {
             return response()->json(['message' => 'Service not found or you are not authorized to update it'], 404);
         }
@@ -144,9 +146,9 @@ class ServiceController extends Controller
     }
 
     // Delete a service
-    public function destroy($id)
+    public function destroy(Request $request)
     {
-        $service = Service::find($id);
+        $service = Service::find($request->id);
         if (!$service) {
             return response()->json(['status' => false, 'message' => 'Service not found'], 404);
         }
@@ -168,12 +170,33 @@ class ServiceController extends Controller
         $recommendations = Service::where('service_name', 'LIKE', $search . '%')
             ->orderBy('service_name', 'asc')
             ->take(10)
-            ->get(['id', 'service_name', 'amount']);            
+            ->get(['id', 'service_name', 'amount']);          
+            
+        /* Inventory Recommendations */
+        $inventories = Inventory::where(function ($q) use ($search) {
+            $q->where('product_name', 'LIKE', $search . '%')
+              ->orWhere('product_code', 'LIKE', $search . '%')
+              ->orWhere('barcode', 'LIKE', $search . '%');
+        })
+            ->select(
+            'product_name',
+            'selling_price',
+            'size',
+            Inventory::raw('SUM(stock) as total_stock')
+        )
+        ->groupBy('product_name','selling_price','size')
+        ->orderBy('product_name', 'asc')
+        ->limit(10)
+        ->get();
+
+        $recommendations = $recommendations
+        ->merge($inventories)
+        ->values();
 
         return response()->json([
             'status' => true,
             'query' => $search,
-            'recommendations' => $recommendations
+            'recommendations' => $recommendations,
         ]);
     }
 }

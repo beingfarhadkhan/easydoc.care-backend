@@ -13,6 +13,7 @@ use App\Models\AssignToAccount;
 use App\Models\User;
 use App\Models\Account;
 use App\Models\Payment;
+use App\Models\Inventory;
 
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
@@ -28,21 +29,42 @@ class ReceiptController extends Controller
     public function store(Request $request)
     {              
         $existing = Receipt::where('appointment_id', $request->appointment_id)->first();
+
+        $clinic = Clinic::find($request->clinic_id);
+        if (!$clinic) {
+            return response()->json(['message' => 'Clinic not found'], 201);
+        }
+
+        $advance = 0;
+
+        if (!empty($request->adv_payment_mode)) {
+            foreach ($request->adv_payment_mode as $payment) {
+
+                $amount = ($payment['amount'] ?? 0);
+                $discountPercent = ($payment['discount_percent'] ?? 0);
+
+                if ($discountPercent > 0) {
+                    $discount = ($amount * $discountPercent) / 100;
+                    $amount = max($amount - $discount, 0);
+                }
+
+                $advance += $amount;
+            }
+        }
         
         if ($existing) {            
             $existing->update([
                 'status' => $request->status,
                 'particulars' => json_encode($request->particulars),
                 'payment_mode' => json_encode($request->payment_mode),
+                'adv_payment_mode' => json_encode($request->adv_payment_mode),
+                'advance_amount' => $advance,
                 'remarks' => $request->remarks,
                 'additional_discount' => $request->additional_discount,
                 'updated_at' => now(),
             ]);
 
-            $clinic = Clinic::find($request->clinic_id);
-            if (!$clinic) {
-                return response()->json(['message' => 'Clinic not found'], 201);
-            }
+            
 
             $pdf_url = $this->generatePdf($existing->id);
             
@@ -71,6 +93,66 @@ class ReceiptController extends Controller
                 }
             }
 
+            if (!empty($request->adv_payment_mode)) {
+                foreach ($request->adv_payment_mode as $payment) {
+                    Payment::create([
+                        'receipt_id' => $existing->id,
+                        'clinic_id' => $request->clinic_id,
+                        'account_id' => $clinic->account_id,
+                        'payment_mode' => $payment['type'],
+                        'amount' => $payment['amount'],
+                        'transaction_date' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+            }
+
+
+            //Deduct stock for each particular
+            foreach ($request->particulars as $item) {
+
+                $serviceName = $item['service_name'] ?? null;
+                $qtyNeeded   = (int) ($item['quantity'] ?? 0);
+
+                if (!$serviceName || $qtyNeeded <= 0) {
+                    continue;
+                }
+
+                $inventories = Inventory::where('product_name', 'LIKE', $serviceName)
+                    ->where('stock', '>', 0)
+                    ->orderBy('expiry_date', 'asc')
+                    ->get();
+
+                // if ($inventories->isEmpty()) {
+                //     return response()->json([
+                //         'status' => false,
+                //         'message' => "Stock not available for {$serviceName}"
+                //     ], 422);
+                // }
+
+                foreach ($inventories as $inventory) {
+
+                    if ($qtyNeeded <= 0) break;
+
+                    if ($inventory->stock >= $qtyNeeded) {
+                        $inventory->decrement('stock', $qtyNeeded);
+                        $qtyNeeded = 0;
+                    } else {
+                        $qtyNeeded -= $inventory->stock;
+                        $inventory->update(['stock' => 0]);
+                    }
+                }
+                // if ($qtyNeeded > 0) {
+                //     return response()->json([
+                //         'status' => false,
+                //         'message' => "Insufficient stock for {$serviceName}"
+                //     ], 422);
+                // }
+            }
+
+            $existing = Receipt::where('id',$existing->id)->first();
+
             return response()->json([
             'message' => 'Receipt updated and PDF regenerated successfully',
             'receipt' => $existing->fresh(),
@@ -78,9 +160,30 @@ class ReceiptController extends Controller
         }
 
         $clinic = Clinic::find($request->clinic_id);
+        
         if (!$clinic) {
             return response()->json(['message' => 'Clinic not found'], 201);
         } 
+
+        $advance = 0;
+
+        if (!empty($request->adv_payment_mode)) {
+            foreach ($request->adv_payment_mode as $payment) {
+
+                $amount = ($payment['amount'] ?? 0);
+                $discountPercent = ($payment['discount_percent'] ?? 0);
+
+                if ($discountPercent > 0) {
+                    $discount = ($amount * $discountPercent) / 100;
+                    $amount = max($amount - $discount, 0);
+                }
+
+                $advance += $amount;
+            }
+        }
+
+
+
         // dd($request->clinic_id);
         $receiptNo = $this->generateReceiptNo($request->clinic_id, $clinic->account_id);
     
@@ -92,6 +195,8 @@ class ReceiptController extends Controller
             'status' => $request->status,
             'particulars' => json_encode($request->particulars),
             'payment_mode' => json_encode($request->payment_mode),
+            'adv_payment_mode' => json_encode($request->adv_payment_mode),
+            'advance_amount' => $advance, 
             'pdf_url' => null,
             'additional_discount' => $request->additional_discount,
             'remarks' => $request->remarks,
@@ -121,6 +226,59 @@ class ReceiptController extends Controller
                 'updated_at' => now()
             ]);          
         }
+
+        if (!empty($request->adv_payment_mode)) {
+            foreach ($request->adv_payment_mode as $payment) {
+                Payment::create([
+                    'receipt_id' => $receipt->id,
+                    'clinic_id' => $request->clinic_id,
+                    'account_id' => $clinic->account_id,
+                    'payment_mode' => $payment['type'],
+                    'amount' => $payment['amount'],
+                    'transaction_date' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+        }
+
+
+        //Deduct stock for each particular
+        foreach ($request->particulars as $item) {
+
+            $serviceName = $item['service_name'] ?? null;
+            $qtyNeeded   = (int) ($item['quantity'] ?? 0);
+
+            if (!$serviceName || $qtyNeeded <= 0) {
+                continue;
+            }
+
+            $inventories = Inventory::where('product_name', 'LIKE', $serviceName)
+                ->where('stock', '>', 0)
+                ->orderBy('expiry_date', 'asc')
+                ->get();    
+
+            foreach ($inventories as $inventory) {
+
+                if ($qtyNeeded <= 0) break;
+
+                if ($inventory->stock >= $qtyNeeded) {
+                    $inventory->decrement('stock', $qtyNeeded);
+                    $qtyNeeded = 0;
+                } else {
+                    $qtyNeeded -= $inventory->stock;
+                    $inventory->update(['stock' => 0]);
+                }
+            }
+
+            // if ($qtyNeeded > 0) {
+            //     return response()->json([
+            //         'status' => false,
+            //         'message' => "Insufficient stock for {$serviceName}"
+            //     ], 422);
+            // }
+        }
+
 
         $receipt = Receipt::where('id',$receipt->id)->first();
 
@@ -172,6 +330,8 @@ class ReceiptController extends Controller
             'status' => $receipts->status,
             'particulars' => json_decode($receipts->particulars, true),
             'payment_mode' => json_decode($receipts->payment_mode, true),
+            'adv_payment_mode' => json_decode($receipts->adv_payment_mode, true),
+            'advance_amount' => $receipts->advance_amount,
             'additional_discount' => $receipts->additional_discount,
             'remarks' => $receipts->remarks,
             'pdf_url' => $receipts->pdf_url,
@@ -203,6 +363,8 @@ class ReceiptController extends Controller
                 'status' => $receipt->status,
                 'particulars' => json_decode($receipt->particulars, true),
                 'payment_mode' => json_decode($receipt->payment_mode, true),
+                'adv_payment_mode' => json_decode($receipt->adv_payment_mode, true),
+                'advance_amount' => $receipt->advance_amount,
                 'additional_discount' => $receipt->additional_discount,
                 'remarks' => $receipt->remarks,
                 'pdf_url' => $receipt->pdf_url,
@@ -391,6 +553,8 @@ class ReceiptController extends Controller
         $appointment = Appointment::find($receipt->appointment_id);
         $particulars = json_decode($receipt->particulars, true) ?: [];
         $payment_mode = json_decode($receipt->payment_mode, true) ?: [];
+        $adv_payment_mode = json_decode($receipt->adv_payment_mode, true) ?: [];
+        $advance_amount = $receipt->advance_amount;
         $additional_discount = $receipt->additional_discount ?? 0;
         $accountId = $clinic->account_id;
         $accountName = Account::find($accountId);
@@ -401,6 +565,17 @@ class ReceiptController extends Controller
         $docSign = $doctor ? $doctor->signature_image : null;
         $doctorName = $doctor ? $doctor->name : null;
         
+        // Default fallback
+        $template = $clinic->receipt_template ?? 'modern';
+
+        // Blade path
+        $viewPath = 'pdf.receipts.' . $template;
+
+        // Safety fallback
+        if (!view()->exists($viewPath)) {
+            $viewPath = 'pdf.receipts.modern';
+        }
+
         // Path to store PDFs
         $uploadDir = public_path('receipts');
         if (!file_exists($uploadDir)) {
@@ -417,8 +592,8 @@ class ReceiptController extends Controller
         }
 
         // Generate PDF with DOMPDF
-        $pdf = PDF::loadView('pdf.receipt', compact(
-            'receipt', 'clinic', 'patient', 'appointment', 'particulars', 'payment_mode', 'accountName', 'additional_discount','accountPhone','doctorName','docSign',
+        $pdf = PDF::loadView($viewPath, compact(
+            'receipt', 'clinic', 'patient', 'appointment', 'particulars', 'payment_mode', 'accountName', 'additional_discount','accountPhone','doctorName','docSign','adv_payment_mode','advance_amount'
         ))->setPaper('a4', 'portrait');
 
         // Save the generated file
@@ -514,24 +689,69 @@ class ReceiptController extends Controller
         }
 
         // Fetch receipts for those appointments
-        $payments = Receipt::whereIn('appointment_id', $appointmentIds)
-            ->with(['appointment:id,appointment_date,time_slot'])
+        $receipts  = Receipt::whereIn('appointment_id', $appointmentIds)
+            ->with(['appointment:id,appointment_date,time_slot',
+            'patient:id,name,phone'
+            ])
             ->orderBy('id', 'desc')
             ->get();
 
-            $payments = $payments->map(function ($payment) {
-                $paymentModes = json_decode($payment->payment_mode, true) ?: [];
-                $totalAmount = array_sum(array_column($paymentModes, 'amount'));
+            $payments = $receipts->map(function ($receipts) {
+                $modeWiseAmount = [];
+                // Normal payment
+                $paymentModes = json_decode($receipts->payment_mode, true) ?: [];
+                // $paidAmount = array_sum(array_column($paymentModes, 'amount'));
+                 $paidAmount = 0;
+
+                foreach ($paymentModes as $payment) {
+                    $type = $payment['type'] ?? 'unknown';
+                    $amount = (float) ($payment['amount'] ?? 0);
+
+                    $paidAmount += $amount;
+
+                    if (!isset($modeWiseAmount[$type])) {
+                        $modeWiseAmount[$type] = 0;
+                    }
+                    $modeWiseAmount[$type] += $amount;
+                }
+
+                 // Advance payment
+                $advanceModes = json_decode($receipts->adv_payment_mode, true) ?: [];
+                // $advanceAmount = 0;
+
+                // foreach ($advanceModes as $adv) {
+                //     $amount = $adv['amount'] ?? 0;
+
+                //     $advanceAmount += max($amount, 0);
+                // }
+                $advanceAmount = 0;
+
+                foreach ($advanceModes as $adv) {
+                    $type = $adv['type'] ?? 'unknown';
+                    $amount = (float) ($adv['amount'] ?? 0);
+
+                    $advanceAmount += $amount;
+
+                    if (!isset($modeWiseAmount[$type])) {
+                        $modeWiseAmount[$type] = 0;
+                    }
+                    $modeWiseAmount[$type] += $amount;
+                }
                 
                 return [
-                    'id' => $payment->id,
-                    'receipt_no' => $payment->receipt_no,
-                    'appointment_id' => $payment->appointment_id,
-                    'patient_id' => $payment->patient_id,
-                    'status' => $payment->status,
-                    'total_amount' => $totalAmount,
-                    'additional_discount' => $payment->additional_discount,
-                    'created_at' => $payment->created_at,
+                    'id' => $receipts->id,
+                    'receipt_no' => $receipts->receipt_no,
+                    'appointment_id' => $receipts->appointment_id,
+                    'patient' => $receipts->patient,
+                    'patient_name' => $receipts->name,
+                    'status' => $receipts->status,
+                    'paid_amount' => $paidAmount,
+                    'advance_amount' => $advanceAmount,
+                    'total_amount' => $paidAmount + $advanceAmount,
+                    'payment_mode_wise_amount' => $modeWiseAmount,
+                    'pdf_url' => $receipts->pdf_url,
+                    'additional_discount' => $receipts->additional_discount,
+                    'created_at' => $receipts->created_at,
                 ];
             });
 
@@ -539,7 +759,7 @@ class ReceiptController extends Controller
             'status' => true,
             'count' => $payments->count(),
             'data' => $payments
-        ],200);
+         ],200);
         
     }
 

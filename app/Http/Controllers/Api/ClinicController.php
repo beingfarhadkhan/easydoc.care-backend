@@ -8,6 +8,7 @@ use App\Models\Clinic;
 use App\Models\Account;
 use App\Models\AssignToClinic;
 use App\Models\User;
+use App\Models\AccountBilling;
 use App\Models\AssignToAccount;
 
 class ClinicController extends Controller
@@ -33,7 +34,24 @@ class ClinicController extends Controller
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
-    {
+    {   
+
+        $billing = AccountBilling::where('account_id', $request->account_id)
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if (!$billing) {
+            return response()->json([
+                'message' => 'Billing configuration not found for this account'
+            ], 404);
+        }
+
+        if ((int)$billing->no_of_clinics_in_use >= (int)$billing->no_of_clinics_allowed) {
+            return response()->json([
+                'message' => 'Clinic limit reached. Cannot add more Clinic.'
+            ], 403);
+        }
+
         $clinic = Clinic::create([
             'account_id' => $request->account_id,
             'name' => $request->name,
@@ -52,6 +70,14 @@ class ClinicController extends Controller
             'created_at' => now(),
             'updated_at' => now()
         ]);
+
+        
+        
+        if ($billing) {
+            $billing->no_of_clinics_in_use = (int)$billing->no_of_clinics_in_use + 1;
+            // $billing->updated_at = now();
+            $billing->save();
+        }
 
         return response()->json([
             'message' => 'Clinic created successfully',
@@ -284,7 +310,12 @@ class ClinicController extends Controller
     public function updateSelectedAccount(Request $request)
     {
         $user = auth()->user();
+        // $user->selected_account = $request->account_id;
+        
+        $clinic = Clinic::where('account_id', $request->account_id)->first();
+
         $user->selected_account = $request->account_id;
+        $user->selected_clinic = $clinic?->id;
         $user->save();
 
         return response()->json([
@@ -292,7 +323,7 @@ class ClinicController extends Controller
         ], 200);
     }
 
-     public function uploadClinicLogo(Request $request)
+    public function uploadClinicLogo(Request $request)
     {
         
             $file = $request->file('logo');
@@ -301,7 +332,7 @@ class ClinicController extends Controller
                 mkdir($uploadPath, 0777, true);
             }
 
-            $filename = time() . '_' . $file->getClientOriginalName();
+            $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
             $file->move($uploadPath, $filename);
             $fileUrl = url('clinic_logo/' . $filename);
             return response()->json([
@@ -310,5 +341,34 @@ class ClinicController extends Controller
                 
             ], 201);
         
+    }
+
+    public function updateReceiptConfig(Request $request)
+    {
+        $clinic = Clinic::find($request->clinic_id);
+
+        $clinic->receipt_template = $request->receipt_template;
+        $clinic->show_doctor_name = $request->show_doctor_name;
+        $clinic->show_doctor_sign = $request->show_doctor_sign;
+        $clinic->additional_content = $request->additional_content;
+        $clinic->updated_at = now();
+        $clinic->save();
+
+        return response()->json([
+            'message' => 'Receipt template updated successfully',
+        ], 200);
+    }
+
+    public function getReceiptConfig(Request $request)
+    {
+        $clinic = Clinic::find($request->clinic_id);
+
+        return response()->json([
+            'clinic_id' => $clinic->id,
+            'receipt_template' => $clinic->receipt_template,
+            'show_doctor_name' => $clinic->show_doctor_name,
+            'show_doctor_sign' => $clinic->show_doctor_sign,
+            'additional_content' => $clinic->additional_content
+        ], 200);
     }
 }

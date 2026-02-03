@@ -8,6 +8,8 @@ use App\Models\Clinic;
 use App\Models\AssignToClinic;
 use App\Models\PatientToAccount;
 use App\Models\User;
+use App\Models\Appointment;
+
 use App\Models\Account;
 
 
@@ -154,9 +156,10 @@ class PatientController extends Controller
         $search = $request->search;
         // $patient = PatientToAccount::where('account_id', $request->account_id)->pluck('patient_id');
         $recommendPatients = Patient::where(function ($query) use ($search) {
-                            $query->whereRaw('LOWER(name) LIKE ?', [strtolower($search) . '%'])
+                            $query->whereRaw('LOWER(UHID) LIKE ?', [strtolower($search) . '%'])
                                 ->orWhereRaw('LOWER(email) LIKE ?', [strtolower($search) . '%'])
-                                ->orWhereRaw('LOWER(phone) LIKE ?', [strtolower($search) . '%']);
+                                ->orWhereRaw('LOWER(phone) LIKE ?', [strtolower($search) . '%'])
+                                ->orWhereRaw('LOWER(name) LIKE ?', [strtolower($search) . '%']);
                             })->get();
         
     
@@ -171,6 +174,87 @@ class PatientController extends Controller
 
         return response()->json($recommendPatients);
     }
+
+    public function recommendPatientsByAccount(Request $request)
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+
+        $search = trim($request->search);
+
+        if (!$search || strlen($search) < 1) {
+            return response()->json([
+                'status' => true,
+                'data' => []
+            ]);
+        }
+
+        $accountId = $request->account_id ?? $user->selected_account;
+
+        if (!$accountId) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Account not found'
+            ], 404);
+        }
+
+        /**
+         * 1️⃣ Patients linked directly to account (patient_to_account)
+         */
+        $patientIdsFromAccount = PatientToAccount::where('account_id', $accountId)
+            ->pluck('patient_id');
+
+        /**
+         * 2️⃣ Patients who had appointments in account clinics
+         */
+        $clinicIds = Clinic::where('account_id', $accountId)->pluck('id');
+
+        $patientIdsFromAppointments = Appointment::whereIn('clinic_id', $clinicIds)
+            ->pluck('patient_id');
+
+        /**
+         * 3️⃣ Merge + unique patient IDs
+         */
+        $patientIds = $patientIdsFromAccount
+            ->merge($patientIdsFromAppointments)
+            ->unique()
+            ->values();
+
+        if ($patientIds->isEmpty()) {
+            return response()->json([
+                'status' => true,
+                'data' => []
+            ]);
+        }
+
+        /**
+         * 4️⃣ Search patients
+         */
+        $patients = Patient::whereIn('id', $patientIds)
+            ->where(function ($q) use ($search) {
+                $q->whereRaw('LOWER(UHID) LIKE ?', [strtolower($search) . '%'])
+                    ->orWhereRaw('LOWER(email) LIKE ?', [strtolower($search) . '%'])
+                    ->orWhereRaw('LOWER(phone) LIKE ?', [strtolower($search) . '%'])
+                    ->orWhereRaw('LOWER(name) LIKE ?', [strtolower($search) . '%']);
+            })
+            ->select('id', 'name', 'phone', 'uhid','gender','age')
+            ->orderBy('name')
+            ->limit(10)
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'count'  => $patients->count(),
+            'data'   => $patients
+        ]);
+    }
+
 
     public function getAllPatientsByClinic(Request $request)
     {

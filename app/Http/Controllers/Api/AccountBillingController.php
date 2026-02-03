@@ -36,7 +36,8 @@ class AccountBillingController extends Controller
         return response()->json(['message' => 'Billing plan added successfully', 'data' => $billing]);
     }
 
-    public function getBillingByAccountId(request $request){
+    public function getBillingByAccountId(request $request)
+    {
      
         $billing = AccountBilling::where('account_id', $request->account_id)->first();
 

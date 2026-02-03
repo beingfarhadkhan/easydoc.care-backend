@@ -10,6 +10,7 @@ use App\Models\AssignToClinic;
 use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\User;
+use Carbon\Carbon;
 
 class AppointmentController extends Controller
 {
@@ -168,6 +169,17 @@ class AppointmentController extends Controller
             ->where('check_in_status', 4)
             ->orderBy('time_slot', 'asc')
             ->get();
+
+        $pastAppointments = Appointment::with(['patient:id,uhid,name,phone,gender,age'])
+            ->where('clinic_id', $request->clinic_id)
+            ->whereDate('appointment_date', '<', now()->toDateString())
+            ->orderBy('appointment_date', 'desc')
+            ->orderBy('time_slot', 'desc')
+            ->get();
+
+        if ($pastAppointments->isEmpty()) {
+            return response()->json(['message' => 'No past appointments found'], 404);
+        }
         
         return response()->json([
             // 'appointments' => $appointments,
@@ -176,7 +188,8 @@ class AppointmentController extends Controller
             'allfutureappointments' => $allfutureappointments,
             'todayappointments' => $todayappointments,
             'checkin' => $checkin,
-            'completed' => $completed
+            'completed' => $completed,
+            'passappointment' => $pastAppointments
         ]);
     }
 
@@ -275,5 +288,151 @@ class AppointmentController extends Controller
             'visits' => $pastAppointments
         ]);
     }
+
+    public function getPastAppointments(Request $request)
+    {
+        $clinic = Clinic::where('id', $request->clinic_id)->first();
+        
+        if (!$clinic) {
+            return response()->json(['message' => 'Clinic not found'], 404);
+        }
+
+        $pastAppointments = Appointment::with(['patient:id,uhid,name,phone,gender,age'])
+            ->where('clinic_id', $request->clinic_id)
+            ->whereDate('appointment_date', '<', now()->toDateString())
+            ->orderBy('appointment_date', 'desc')
+            ->orderBy('time_slot', 'desc')
+            ->get();
+
+        if ($pastAppointments->isEmpty()) {
+            return response()->json(['message' => 'No past appointments found'], 404);
+        }
+
+        return response()->json([
+            'total_past_appointments' => $pastAppointments->count(),
+            'appointments' => $pastAppointments
+        ]);
+    }
+
+    /**
+     * Store a newly created past appointment in storage.
+     */
+    public function createPastAppointment(Request $request)
+    {
+        $appointment = Appointment::create([
+            'clinic_id' => $request->clinic_id,
+            'patient_id' => $request->patient_id,
+            'doctor_id' => $request->doctor_id,
+            'mode' => $request->mode,
+            'appointment_date' => $request->appointment_date,
+            'duration' => $request->duration,
+            'time_slot' => $request->time_slot,
+            'check_in_status' => 4, // Assuming 4 indicates a past appointment
+            'type' => $request->type,
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        return response()->json([
+            'message' => 'Past appointment created successfully',
+            'appointment' => $appointment
+        ], 201);
+    }
+
+    /**
+     * Update the specified past appointment in storage.
+     */
+    public function updatePastAppointment(Request $request)
+    {
+        $appointment = Appointment::where('id', $request->appointment_id)->first();
+        if (!$appointment) {
+            return response()->json(['message' => 'Past appointment not found'], 404);
+        }
+
+        Appointment::where('id', $request->appointment_id)->update([
+            'clinic_id' => $request->clinic_id,
+            'patient_id' => $request->patient_id,
+            'doctor_id' => $request->doctor_id,
+            'mode' => $request->mode,
+            'appointment_date' => $request->appointment_date,
+            'duration' => $request->duration,
+            'time_slot' => $request->time_slot,
+            'check_in_status' => $appointment->check_in_status, // Keep existing status
+            'type' => $request->type,
+            'updated_at' => now()
+        ]);
+
+        return response()->json([
+            'message' => 'Past appointment updated successfully'
+        ]);
+    }
+
+
+
+    public function getMonthlyAppointments(Request $request)
+    {
+        $clinic = Clinic::where('id', $request->clinic_id)->first();
+        
+        if (!$clinic) {
+            return response()->json(['message' => 'Clinic not found'], 404);
+        }
+
+        $startDate = Carbon::createFromDate(
+            $request->year,
+            $request->month,
+            1
+        )->startOfMonth();
+
+        $endDate = $startDate->copy()->endOfMonth();
+
+        $appointments = Appointment::with([
+                'patient:id,name,phone,uhid',
+                'doctor:id,name'
+            ])
+            ->where('clinic_id', $request->clinic_id)
+            ->whereBetween('appointment_date', [$startDate, $endDate])
+            ->orderBy('appointment_date')
+            ->orderBy('time_slot')
+            ->get();
+
+        $calendarData = $appointments->map(function ($appt) {
+            return [
+                'id' => $appt->id,
+
+                // Calendar title
+                'title' => $appt->patient->name ?? 'Patient',
+
+                // Calendar date & time
+                'date' => $appt->appointment_date,
+                'time' => $appt->time_slot,
+
+                'status' => $appt->check_in_status,
+
+                // Patient info
+                'patient' => [
+                    'id'    => $appt->patient->id ?? null,
+                    'name'  => $appt->patient->name ?? null,
+                    'phone' => $appt->patient->phone ?? null,
+                    'uhid'  => $appt->patient->uhid ?? null,
+                ],
+
+                // Doctor info
+                'doctor' => [
+                    'id'   => $appt->doctor->id ?? null,
+                    'name' => $appt->doctor->name ?? null,
+                ],
+            ];
+        });
+
+        return response()->json([
+            'status' => true,
+            'clinic_id' => $request->clinic_id,
+            // 'account_id' => $request->account_id,
+            'month' => $request->month,
+            'year' => $request->year,
+            'count' => $calendarData->count(),
+            'data' => $calendarData
+        ], 200);
+}
+
 
 }

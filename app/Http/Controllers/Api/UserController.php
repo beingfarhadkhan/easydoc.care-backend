@@ -107,8 +107,34 @@ class UserController extends Controller
         //     ], 403);
         // }
         $accountId = Clinic::where('id', $request->clinics[0])->first()->account_id;
+        if (!$accountId) {
+            return response()->json(['message' => 'Clinic not found'], 404);
+        }
+
+        $billing = AccountBilling::where('account_id', $accountId)->first();
+
+        if (!$billing) {
+            return response()->json([
+                'message' => 'Account billing not found'
+            ], 400);
+        }
         
-        
+        if ($request->role == 2) { // Doctor
+            if ((int)$billing->no_of_docs_in_use >= (int)$billing->no_of_docs_allowed) {
+                return response()->json([
+                    'message' => 'Doctor limit reached for this account'
+                ], 403);
+            }
+        }
+
+        if ($request->role == 3) { // Staff
+            if ((int)$billing->no_of_staff_in_use >= (int)$billing->no_of_staff_allowed) {
+                return response()->json([
+                    'message' => 'Staff limit reached for this account'
+                ], 403);
+            }
+        }
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -135,6 +161,20 @@ class UserController extends Controller
         //     }                    
         // }
 
+        if ($billing) {
+
+            // Doctor
+            if ($request->role == 2) {
+                $billing->no_of_docs_in_use = (int)$billing->no_of_docs_in_use + 1;
+                $billing->save();
+            }
+
+            // Staff
+            if ($request->role == 3) {
+                $billing->no_of_staff_in_use = (int)$billing->no_of_staff_in_use + 1;
+                $billing->save();
+            }
+        }
 
         foreach($request->clinics as $clinic){
             AssignToClinic::create([
@@ -275,6 +315,8 @@ class UserController extends Controller
         $user->social_links = $user->social_links ? json_decode($user->social_links, true) : null;
         $user->availability = $user->availability ? json_decode($user->availability, true) : null;
         $user->google_review = $user->google_review ? json_decode($user->google_review, true) : null; 
+        $user->advice = $user->advice ? json_decode($user->advice, true) : null;
+        $user->pad_suggestion = $user->pad_suggestion ? json_decode($user->pad_suggestion, true) : null;
 
         $accounts = Account::whereIn('id', function($query) use ($user) {
             $query->select('account_id')
@@ -672,5 +714,20 @@ class UserController extends Controller
         $user->save();
 
         return response()->json(['message' => 'Advices updated successfully'], 200);
-    }   
+    }
+
+    public function getPadConfig(Request $request)
+    {
+        $user = User::find(auth()->user()->id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+        
+        $padconfig = json_decode($user->pad_configuration, true);
+
+        return response()->json([
+            'pad config' => $padconfig]
+        , 200);
+    }
 }

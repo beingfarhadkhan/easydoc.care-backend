@@ -9,6 +9,7 @@ use App\Models\Patient;
 use App\Models\Appointment;
 use App\Models\Dictionary;
 use App\Models\Clinic;
+use App\Models\User;
 use PDF;
 
 class PrescriptionController extends Controller
@@ -35,7 +36,23 @@ class PrescriptionController extends Controller
             'oralFinding' => 'oral_finding'
         ];
 
+        $user = auth()->user();
+        $userSuggestion = [];
+
+        if(!empty($user->pad_suggestion)){
+            $userSuggestion = json_decode($user->pad_suggestion, true);
+        }
+
         foreach ($categories as $key => $type) {
+
+            if (!isset($data[$key]) || !is_array($data[$key])) {
+                continue;
+            }
+
+            if (!isset($userSuggestion[$type])) {
+                $userSuggestion[$type] = [];
+            }
+
             if (!empty($data[$key])) {
                 foreach ($data[$key] as $item) {
                     $name = $item['name'] ?? null;
@@ -45,9 +62,18 @@ class PrescriptionController extends Controller
                             'name' => $name
                         ]);
                     }
+
+                    if (!in_array($name, $userSuggestion[$type])) {
+                // dd($userSuggestion[$type]);
+                            $userSuggestion[$type][] = $name;
+                    }
                 }
-            }
+            }         
         }
+
+        $user->update([
+            'pad_suggestion' => json_encode($userSuggestion)
+        ]);
 
             $pdf_url = $this->generatePdf($existing->id);
         
@@ -110,7 +136,7 @@ class PrescriptionController extends Controller
         
         return response()->json([
             'message' => 'Prescription saved successfully',
-            'prescription' => $prescription
+            'receipt' => $prescription
         ], 201);
     }
 
@@ -153,7 +179,12 @@ class PrescriptionController extends Controller
         $prescription = Prescription::findOrFail($id);
         $patient = Patient::find($prescription->patient_id);
         $clinic = Clinic::find($prescription->clinic_id);
-
+        $appointment = Appointment::find($prescription->appointment_id);
+        $doctor = User::find(Appointment::find($prescription->appointment_id)->doctor_id);
+        $docSign = $doctor ? $doctor->signature_image : null;
+        $doctorName = $doctor ? $doctor->name : null;
+        $doctorSpecialization = $doctor ? $doctor->specialization : null;
+        
         $prescription_data = json_decode($prescription->prescription_data, true);
 
          $uploadDir = public_path('prescription_pdf');
@@ -180,6 +211,8 @@ class PrescriptionController extends Controller
             'patient' => $patient,
             'clinic' => $clinic,
             'prescription_data' => json_decode($prescription->prescription_data, true),
+            'doctorName' => $doctorName,
+            'doctorSpecialization' => $doctorSpecialization,
         ])->setPaper('a4', 'portrait');
 
         // Add footer using callback
@@ -222,6 +255,8 @@ class PrescriptionController extends Controller
 
         return response()->json($query);
     }
+
+
 
 }
 

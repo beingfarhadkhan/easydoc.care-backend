@@ -17,6 +17,7 @@ class EasydocBillingPayment extends Model
         'status',
         'captured',
         'invoice_data',
-        'invoice_date'
+        'invoice_date',
+        'webhook_data'
     ];
 }

@@ -17,6 +17,8 @@ use App\Http\Controllers\Api\PrescriptionController;
 use App\Http\Controllers\Api\AccountBillingController;
 use App\Http\Controllers\Api\RazorPayPaymentController;
 use App\Http\Controllers\Api\PlanController;
+use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\Api\OrderController;
 
 
 
@@ -64,7 +66,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('account/{id}', [AccountController::class, 'show']); 
     Route::post('remove-user-from-account', [AccountController::class, 'removeUserFromAccount']); //only admin access 
     Route::get('get-all-accounts-by-user', [AccountController::class, 'getAllAccountsByUser']); 
-    Route::get('get-all-users-by-account', [AccountController::class, 'getAllUsersByAccount']); //only admin access  
+    Route::get('get-all-users-by-account', [AccountController::class, 'getAllUsersByAccount']); //only admin access
+    Route::get('get-invoice-by-account', [AccountController::class, 'getInvoiceByAccount']);  
+    Route::get('get-current-billing-detail', [AccountController::class, 'getCurrentBillingDetail']);
+    Route::post('update-patient-details-config',[AccountController::class, 'updatePatientDetailsConfig']);  
+    Route::get('get-patient-details-config',[AccountController::class, 'getPatientDetailsConfig']);  
+    Route::post('update-payment-details',[AccountController::class, 'updatePaymentDetails']);  
+    Route::get('get-payment-details',[AccountController::class, 'getPaymentDetails']);
+    Route::post('upload-qr-image', [AccountController::class, 'uploadQR']);
+    Route::post('remove-bank-account',[AccountController::class, 'removeBankAccount']);  
+
+
 
     // Clinic API Routes
     Route::post('clinic/store', [ClinicController::class, 'store']); //only admin access 
@@ -77,10 +89,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('update-selected-account', [ClinicController::class, 'updateSelectedAccount']);
     Route::post('upload-clinic-logo', [ClinicController::class, 'uploadClinicLogo']);
     Route::post('clinic/update', [ClinicController::class, 'update']);  
-
-   
-
-
+    Route::post('update-receipt-config', [ClinicController::class, 'updateReceiptConfig']);  
+    Route::get('get-receipt-config', [ClinicController::class, 'getReceiptConfig']);  
     
 
     // patient API Routes
@@ -88,6 +98,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('patient/update', [PatientController::class, 'update']);
     Route::get('patient/{id}', [PatientController::class, 'show']); 
     Route::get('recommendation', [PatientController::class, 'recommendPatients']);
+    Route::get('recommendation-by-account', [PatientController::class, 'recommendPatientsByAccount']);
     Route::get('get-all-patients-by-clinic', [PatientController::class, 'getAllPatientsByClinic']); 
     Route::get('get-all-patients-by-account', [PatientController::class, 'getAllPatientByAccount']); 
     Route::get('get-patient-by-phone', [PatientController::class, 'getPatientByPhone']); 
@@ -102,6 +113,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('get-all-appointments-by-clinic', [AppointmentController::class, 'getAllAppointmentsByClinic']);
     Route::get('get-all-appointment-by-patient', [AppointmentController::class, 'getAllAppointmentsByPatientInClinic']);
     Route::get('past-visits', [AppointmentController::class, 'getAllPastVisitsByPatient']);
+    Route::get('get-monthly-appointment', [AppointmentController::class, 'getMonthlyAppointments']);
 
     //Receipt API Routes
     Route::post('receipt/store', [ReceiptController::class, 'store']);
@@ -118,6 +130,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('service/update', [ServiceController::class, 'update']);
     Route::get('service/{id}', [ServiceController::class, 'show']);
     Route::get('reccommendation-services', [ServiceController::class, 'recommendationService']);
+    Route::get('service-delete', [ServiceController::class, 'destroy']);
 
     //Payment API Routes
     Route::post('payment/store', [PaymentController::class, 'store']);
@@ -172,6 +185,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('update-signature', [UserController::class, 'updateSignatureImage']);
     Route::post('update-google-review', [UserController::class, 'updateGoogleReview']);
     Route::post('update-advice', [UserController::class, 'updateAdvice']);
+    Route::get('get-pad-config', [UserController::class, 'getPadConfig']);
     
     
 
@@ -183,11 +197,40 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/get-plan', [PlanController::class, 'getPlan']);
     Route::get('/get-addon', [PlanController::class, 'getAddon']);
 
+    //Inventory Routes
+    Route::post('inventory/store', [InventoryController::class, 'store']);
+    Route::post('inventory/update', [InventoryController::class, 'update']);
+    Route::get('inventories', [InventoryController::class, 'index']);
+    Route::get('inventory/show', [InventoryController::class, 'show']);
+    Route::get('inventory/search', [InventoryController::class, 'search']);
+    Route::get('inventory/low-stock', [InventoryController::class, 'lowStock']);
+    Route::get('inventory/expiring', [InventoryController::class, 'expiring']);
+    Route::put('inventory/{id}', [InventoryController::class, 'update']);
+    Route::delete('inventory/{id}', [InventoryController::class, 'destroy']);
+    Route::post('inventory/add-stock', [InventoryController::class, 'addStock']);
+    Route::get('inventory/recommend-product-codes', [InventoryController::class, 'recommendProductCodes']);
+    Route::post('upload-product-image', [InventoryController::class, 'uploadProductImage']);
+    Route::post('inventory/add-product', [InventoryController::class, 'addProduct']);
+    Route::post('inventory/update-product', [InventoryController::class, 'updateProduct']);
+    Route::post('inventory/add-stock', [InventoryController::class, 'addStocks']);
+    Route::get('inventory/product-list', [InventoryController::class, 'listProducts']);
+    Route::get('inventory/get-product', [InventoryController::class, 'getProduct']);
+    Route::post('inventory/add-vendor', [InventoryController::class, 'addVendor']);
+    Route::post('inventory/update-vendor', [InventoryController::class, 'updateVendor']);
+    Route::get('inventory/vendor-list', [InventoryController::class, 'listVendor']);
+    Route::get('inventory/get-vendor', [InventoryController::class, 'getVendor']);
+
+
+    //Order Routes
+    Route::post('order/store', [OrderController::class, 'store']);
+    Route::get('orders', [OrderController::class, 'index']);
+    Route::get('get-orders-by-patient', [OrderController::class, 'getOrdersByPatient']);
+    Route::get('order/show', [OrderController::class, 'show']);
+    Route::post('order/update', [OrderController::class, 'update']);
+    // Route::post('update-advance', [OrderController::class, 'addAdvance']);
      
 
 });
+
 Route::post('/razorpay-webhook', [RazorPayPaymentController::class, 'razorpayWebhook']);
-//  Route::match(['get', 'post'], '/razorpay-webhook', [
-//     PaymentHandleRazorPayController::class,
-//     'razorpayWebhook'
-// ]);
+

@@ -77,6 +77,7 @@ class RazorPayPaymentController extends Controller
             'old_price'      => $plan->old_pricing,
             'addons'         => $addons,
             'total_amount'   => $bkAmount,
+            
         ];
 
         // Save order in DB
@@ -175,7 +176,7 @@ class RazorPayPaymentController extends Controller
             ->first();
 
         $nextNumber = 1;
-        if ($lastInvoice && preg_match('/(\d{5})$/', $lastInvoice->invoice_no, $matches)) {
+        if ($lastInvoice && preg_match('/(\d{5})$/', $lastInvoice->invoice_id, $matches)) {
             $nextNumber = (int) $matches[1] + 1;
         }
 
@@ -288,18 +289,19 @@ class RazorPayPaymentController extends Controller
 
 
 
-    public function razorpayWebhook(Request $request){
+    public function razorpayWebhook(Request $request)
+    {
 
-            // dd($request->all());
-       $payment = EasydocBillingPayment::where(
+        // dd($request->all());
+        $payment = EasydocBillingPayment::where(
             'razorpay_order_id',
-            $request->razorpay_order_id
+            $request->payload['payment']['entity']['order_id']
         )->first();
         
         if (!$payment) {
                 return response()->json(['error' => 'Order not found'], 404);
             }
-            
+
         $paymentEntity = $request->payload['payment']['entity'];
 
         $payment->update([
@@ -307,73 +309,75 @@ class RazorPayPaymentController extends Controller
             'razorpay_payment_id' => $paymentEntity['id'],
             'status' => $paymentEntity['status'],
             'captured' => $paymentEntity['captured'] ? 'yes' : 'no',
-      ]);  
+        ]);  
 
 
-    if ($paymentEntity['captured'] === true) {
+        if ($paymentEntity['captured'] === true) {
+            // dd($paymentEntity['captured']);
 
-        $accountBilling = AccountBilling::where(
-            'account_id',
-            $payment->account_id
-        )->first();
+            $accountBilling = AccountBilling::where(
+                'account_id',
+                $payment->account_id
+            )->first();
 
-        if ($accountBilling) {
+            if ($accountBilling) {
 
-            $invoice = json_decode($payment->invoice_data, true);
-            // dd($invoice);
+                $invoice = json_decode($payment->invoice_data, true);
+                // dd($invoice);
 
-            $plan = Plan::where('id', $invoice['plan_id'])
-            ->where('type', 1)
-            ->first();
-         
-
-
-            $docsAllowed    = $plan->doctor_limit;
-            $staffAllowed   = $plan->staff_limit;
-            $adminsAllowed  = $plan->admin_limit;
-            $clinicsAllowed = $plan->clinic_limit;
-
-            foreach ($invoice['addons'] ?? [] as $addon) {
-
-            $addonPlan = Plan::where('id', $addon['addon_id'])
-                ->where('type', 2)
+                $plan = Plan::where('id', $invoice['plan_id'])
+                ->where('type', 1)
                 ->first();
+            
 
-            if (!$addonPlan) {
-                continue;
+
+                $docsAllowed    = $plan->doctor_limit;
+                $staffAllowed   = $plan->staff_limit;
+                $adminsAllowed  = $plan->admin_limit;
+                $clinicsAllowed = $plan->clinic_limit;
+
+                foreach ($invoice['addons'] ?? [] as $addon) {
+
+                $addonPlan = Plan::where('id', $addon['addon_id'])
+                    ->where('type', 2)
+                    ->first();
+
+                if (!$addonPlan) {
+                    continue;
+                }
+
+                $qty = $addon['quantity'];
+
+                $docsAllowed    += ($addonPlan->doctor_limit    * $qty);
+                $staffAllowed   += ($addonPlan->staff_limit   * $qty);
+                $adminsAllowed  += ($addonPlan->admin_limit  * $qty);
+                $clinicsAllowed += ($addonPlan->clinic_limit * $qty);
             }
-
-            $qty = $addon['quantity'];
-
-            $docsAllowed    += ($addonPlan->doctor_limit    * $qty);
-            $staffAllowed   += ($addonPlan->staff_limit   * $qty);
-            $adminsAllowed  += ($addonPlan->admin_limit  * $qty);
-            $clinicsAllowed += ($addonPlan->clinic_limit * $qty);
-        }
-            $plan_start_date = $accountBilling->plan_end_date ? Carbon::parse($accountBilling->plan_end_date)->addDay() : now();
-            $accountBilling->update([
-                'plan_name'               => $plan->plan_name,
-                'plan_price'              => $plan->current_pricing,
-                'billing_cycle'           => match ((int) $invoice['billing_cycle']) {
-                                                12 => 'yearly',
-                                                1  => 'monthly',
-                                                default => null,
-                                            },
-                'plan_end_date'           => $plan_start_date->addMonth((int)$plan->validity) ,
-
-                'no_of_docs_allowed'      => $docsAllowed,
-                'no_of_staff_allowed'     => $staffAllowed,
-                'no_of_admins_allowed'    => $adminsAllowed,
-                'no_of_clinics_allowed'   => $clinicsAllowed,
-
-                'current_plan_detail'     => $invoice,
-
-                'current_plan_details' => $payment->invoice_data,
-
-                'plan_start_date' => $accountBilling->plan_end_date ? Carbon::parse($accountBilling->plan_end_date)->addDay() : now(),
-            ]);
-        }
-    }       
+                $plan_start_date = $accountBilling->plan_end_date ? Carbon::parse($accountBilling->plan_end_date)->addDay() : now();
+                $accountBilling->update([
+                    'plan_name'               => $plan->plan_name,
+                    'plan_price'              => $plan->current_pricing,
+                    'plan_details'            => [
+                                                    'docs_allowed'    => $docsAllowed,
+                                                    'staff_allowed'   => $staffAllowed,
+                                                    'admins_allowed'  => $adminsAllowed,
+                                                    'clinics_allowed' => $clinicsAllowed,
+                                                ],
+                    'billing_cycle'           => match ((int) $invoice['billing_cycle']) {
+                                                    12 => 'yearly',
+                                                    1  => 'monthly',
+                                                    default => null,
+                                                },
+                    'plan_end_date'           => $plan_start_date->addMonth((int)$plan->validity) ,
+                    'no_of_docs_allowed'      => $docsAllowed,
+                    'no_of_staff_allowed'     => $staffAllowed,
+                    'no_of_admins_allowed'    => $adminsAllowed,
+                    'no_of_clinics_allowed'   => $clinicsAllowed,
+                    'current_plan_detail'     => $invoice,
+                    'plan_start_date' => $accountBilling->plan_end_date ? Carbon::parse($accountBilling->plan_end_date)->addDay() : now(),
+                ]);
+            }
+        }       
 
        return response()->json([
            'message' => 'Success'],200);

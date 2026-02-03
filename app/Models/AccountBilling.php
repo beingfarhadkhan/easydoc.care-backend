@@ -22,5 +22,6 @@ class AccountBilling extends Model
         'no_of_staff_allowed',
         'no_of_clinics_in_use',
         'no_of_clinics_allowed',
+        'current_plan_detail'
     ];
 }

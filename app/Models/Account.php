@@ -17,7 +17,9 @@ class Account extends Model
             'country',
             'gst',
             'pan',
-            'primary_user'
+            'primary_user',
+            'patient_detail_config',
+            'payment_details'
         ];
 
 

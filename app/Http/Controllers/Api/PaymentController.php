@@ -8,11 +8,40 @@ use App\Models\Payment;
 
 class PaymentController extends Controller
 {
-    public function basedOnClinic(request $request)
+    // public function basedOnClinic(request $request)
+    // {
+    //     $payments = Payment::where('clinic_id', $request->clinic_id)->get();
+    //     return response()->json($payments);
+    // }
+    public function basedOnClinic(Request $request)
     {
         $payments = Payment::where('clinic_id', $request->clinic_id)->get();
-        return response()->json($payments);
+
+        // Mode-wise sum
+        $modeWiseTotal = [];
+
+        foreach ($payments as $payment) {
+            $mode = $payment->payment_mode ?? 'unknown';
+            $amount = (float) ($payment->amount ?? 0);
+
+            if (!isset($modeWiseTotal[$mode])) {
+                $modeWiseTotal[$mode] = 0;
+            }
+
+            $modeWiseTotal[$mode] += $amount;
+        }
+
+        return response()->json([
+            'total_payments_count' => $payments->count(),
+
+            'payment_mode_wise_amount' => $modeWiseTotal,
+
+            // optional: raw payment data
+            'payments' => $payments
+        ], 200);
     }
+
+
 
     public function basedOnAccount(request $request)
     {

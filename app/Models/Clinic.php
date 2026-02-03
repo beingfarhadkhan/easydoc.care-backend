@@ -14,7 +14,11 @@ class Clinic extends Model
         'phone',
         'email',
         'logo_url',
-        'location'
+        'location',
+        'receipt_template',
+        'show_doctor_name',
+        'show_doctor_sign',
+        'additional_content',
     ];
 
     public function users()

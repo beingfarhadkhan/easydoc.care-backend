@@ -39,7 +39,9 @@ class User extends Authenticatable
         'social_links',
         'invite_link',
         'invite_code',
-        'google_review'       
+        'google_review',
+        'advice',
+        'pad_suggestion'       
     ];
 
     /**
