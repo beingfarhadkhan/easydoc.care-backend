@@ -46,6 +46,7 @@ class AppointmentController extends Controller
             'time_slot' => $request->time_slot,
             'check_in_status' => $request->check_in_status,
             'type' => $request->type,
+            'services' => json_encode($request->services),
             'created_at' => now(),
             'updated_at' => now()
         ]);
@@ -177,9 +178,9 @@ class AppointmentController extends Controller
             ->orderBy('time_slot', 'desc')
             ->get();
 
-        if ($pastAppointments->isEmpty()) {
-            return response()->json(['message' => 'No past appointments found'], 404);
-        }
+        // if ($pastAppointments->isEmpty()) {
+        //     return response()->json(['message' => 'No past appointments found'], 404);
+        // }
         
         return response()->json([
             // 'appointments' => $appointments,

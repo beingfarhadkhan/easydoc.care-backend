@@ -169,17 +169,19 @@ class OrderController extends Controller
             $size        = $item['size'] ?? null;
             // dd($size);
             $new_Total_stock = $inventory->total_stock_available - $deductQty;
+            
+            if($stockDetails !=null){
+                foreach ($stockDetails as &$batch) {
+                    if ($batch['size'] == $size && $deductQty > 0) {
+                        $available = $batch['stock'];
 
-            foreach ($stockDetails as &$batch) {
-                if ($batch['size'] == $size && $deductQty > 0) {
-                    $available = $batch['stock'];
-
-                    if ($available >= $deductQty) {
-                        $batch['stock'] -= $deductQty;
-                        $deductQty = 0;
-                    } else {
-                        $deductQty -= $available;
-                        $batch['stock'] = 0;
+                        if ($available >= $deductQty) {
+                            $batch['stock'] -= $deductQty;
+                            $deductQty = 0;
+                        } else {
+                            $deductQty -= $available;
+                            $batch['stock'] = 0;
+                        }
                     }
                 }
             }

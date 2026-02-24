@@ -18,4 +18,20 @@ class Payment extends Model
         'transaction_id',
         'remarks',
     ];
+
+    protected $appends = ['patient_name'];
+    protected $hidden = [
+        'receipt'
+    ];
+
+    public function getPatientNameAttribute()
+    {
+        return $this->receipt?->appointment?->patient?->name;
+    }
+
+    public function receipt()
+    {
+        return $this->belongsTo(Receipt::class);
+    }
+
 }

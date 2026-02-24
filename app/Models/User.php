@@ -41,7 +41,8 @@ class User extends Authenticatable
         'invite_code',
         'google_review',
         'advice',
-        'pad_suggestion'       
+        'pad_suggestion',
+        'app_type'      
     ];
 
     /**

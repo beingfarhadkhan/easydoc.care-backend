@@ -18,9 +18,7 @@ class InventoryController extends Controller
         $inventories = Inventory::where('account_id', $user->selected_account)
             ->where('clinic_id', $user->selected_clinic)
             ->orderBy('created_at', 'desc')
-            ->get();
-
-        
+            ->get();          
 
         return response()->json([
             'status' => true,
@@ -231,7 +229,7 @@ class InventoryController extends Controller
             'category' => 'nullable|string',
             'product_type' => 'nullable|string',
             'consume_type' => 'nullable|string',
-            'mrp' => 'nullable|numeric|min:0',
+            // 'mrp' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
             'purchase_price' => 'nullable|numeric|min:0',
             'expiry_date' => 'nullable|date',
@@ -295,7 +293,7 @@ class InventoryController extends Controller
         $inventory = Inventory::create([
             'account_id' => $request->account_id,
             'clinic_id'  => $request->clinic_id,
-
+            'product_code'   => $request->product_code,
             'product_name' => $request->product_name,
             'barcode' => $request->barcode ?? null,
             'category' => $request->category ?? null,
@@ -306,7 +304,7 @@ class InventoryController extends Controller
             'content' => json_encode($request->content),
 
             'manufacturer' => $request->manufacturer,
-            'mrp' => $request->mrp ?? 0,
+            // 'mrp' => $request->mrp ?? 0,
 
             'total_stock_available' => 0,
             'stock_details' => json_encode([])
@@ -427,6 +425,7 @@ class InventoryController extends Controller
         $stockDetails[] = [
             'batch_number'       => $request->batch_number,
             'size'               => $request->size,
+            'mrp'                => $request->mrp,
             'purchase_price'     => $request->purchase_price ?? 0,
             'quantity_purchased' => $quantity,
             'stock'              => $quantity,
@@ -497,7 +496,7 @@ class InventoryController extends Controller
         $inventory->update([
             'product_name' => $request->product_name ?? $inventory->product_name,
             'sizes' => json_encode($request->sizes ?? json_decode($inventory->sizes, true)),
-            'mrp' => $request->mrp ?? $inventory->mrp,
+            // 'mrp' => $request->mrp ?? $inventory->mrp,
             'content' => json_encode($request->content ?? json_decode($inventory->content, true)),
             'barcode' => $request->barcode,
             'category' => $request->category,
@@ -598,8 +597,114 @@ class InventoryController extends Controller
         ]);
     }
 
+    public function recommendInventories(Request $request)
+    {
+        $search = $request->search;
 
+        if (!$search) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Search parameter is required'
+            ], 400);
+        }
 
+        $inventories = Inventory::where(function ($q) use ($search) {
+                $q->where('product_name', 'LIKE', $search . '%')
+                ->orWhere('product_code', 'LIKE', $search . '%')
+                ->orWhere('barcode', 'LIKE', $search . '%');
+            })
+            ->orderBy('product_name', 'asc')
+            ->limit(20)
+            ->get();
+
+        $recommendations = [];
+
+        foreach ($inventories as $inventory) {
+
+            $stockDetails = json_decode($inventory->stock_details, true) ?? [];
+
+            foreach ($stockDetails as $batch) {
+
+                $size  = $batch['size'] ?? null;
+                $mrp   = $batch['mrp'] ?? 0;
+                $stock = $batch['stock'] ?? 0;
+
+                if (!$size || $stock <= 0) {
+                    continue;
+                }
+
+                $key = $inventory->product_name . '|' . $size . '|' . $mrp;
+
+                if (!isset($recommendations[$key])) {
+                    $recommendations[$key] = [
+                        'product_name' => $inventory->product_name,
+                        'size' => $size,
+                        'mrp' => $mrp
+                    ];
+                }
+            }
+        }
+
+        return response()->json([
+            'status' => true,
+            'query' => $search,
+            'data' => array_values($recommendations)
+        ]);
+    }
+
+    public function migrationFix(){
+        $inventory = Inventory::whereNull('stock_details')
+        ->get();
+
+        foreach ($inventory as $item) {
+
+                $content = [
+                    [
+                        "name" => "description",
+                        "text" => $item->description
+                    ],
+                    [
+                        "name" => "side_effects",
+                        "text" => $item->side_effects
+                    ],
+                    [
+                        "name" => "disclaimer",
+                        "text" => $item->disclaimer
+                    ]
+                ];
+
+                $stockDetails = [
+                    [
+                        'batch_number'        => null,
+                        'size'                => $item->size,
+                        'mrp'                 => $item->mrp,
+                        'stock'               => $item->stock, // 🔴 ensure column name
+                        'vendor_id'           => null,
+                        'vendor_name'           => null,
+                        'purchase_price'      => $item->purchase_price,
+                        'quantity_purchased'  => $item->stock,
+                        'manufacture_date'    => $item->manufacture_date,
+                        'expiry_date'         => $item->expiry_date
+                    ]
+                ];
+
+                if ($item->size!= null){
+                $sizes = [
+                    $item->size
+                    ];
+                } else {
+                    $sizes = null;
+                }
+
+                $item->stock_details = $stockDetails;
+                $item->content       = $content;
+                $item->total_stock_available = $item->stock; // 🔴 ensure column name
+                $item->sizes = $sizes;
+                
+
+                $item->save();
+            }
+    }
 
 
 

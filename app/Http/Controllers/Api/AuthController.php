@@ -16,13 +16,16 @@ class AuthController extends Controller
             'phone' => 'required',            
             'password' => 'required|min:6'
         ]);
+        
+        $appCode = config('app.app_code');
 
         $user = User::create([
             'name' => $request->name,
             'email' => strtolower($request->email),
             'phone' => $request->phone,
             'password' => bcrypt($request->password),
-            'role' => 1
+            'role' => 1,
+            'app_type' => $appCode
         ]);
         
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -31,6 +34,7 @@ class AuthController extends Controller
             'user' => $user,
             'access_token' => $token,
             'token_type' => 'Bearer',
+            'app' => $appCode
         ], 201);
 
     }
@@ -51,13 +55,24 @@ class AuthController extends Controller
             $credentials = $request->only('phone', 'password');
             $user = User::where('phone', $request->phone)->first();
         }
-
+        
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+        
         if (!auth()->attempt($credentials)) {
             return response()->json(['message' => 'Invalid login details'], 401);
         }
 
-        if (!$user) {
-            return response()->json(['message' => 'User not found'], 404);
+        
+        $appCode = config('app.app_code'); // easydoc / easyhospital
+
+        // dd($user->app_type , $appCode);
+
+        if ($user->app_type !== $appCode) {
+            return response()->json([
+                'message' => 'You are not authorized to login into this application'
+            ], 403);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;

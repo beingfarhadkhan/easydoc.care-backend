@@ -160,7 +160,12 @@ class ServiceController extends Controller
 
     // 🔍 Recommendation API (Search Suggestion)
     public function recommendationService(Request $request)
-    {
+    {   
+        $user = auth()->user();
+
+        $clinicId  = $user->selected_clinic;
+        $accountId = $user->selected_account;
+
         $search = $request->search;
 
         if (!$search) {
@@ -173,10 +178,12 @@ class ServiceController extends Controller
             ->get(['id', 'service_name', 'amount']);          
             
         /* Inventory Recommendations */
-        $inventories = Inventory::where(function ($q) use ($search) {
+        $inventories = Inventory::where('clinic_id', $clinicId)
+        ->where('account_id', $accountId)
+        ->where(function ($q) use ($search) {
             $q->where('product_name', 'LIKE', $search . '%')
-              ->orWhere('product_code', 'LIKE', $search . '%')
-              ->orWhere('barcode', 'LIKE', $search . '%');
+            ->orWhere('product_code', 'LIKE', $search . '%')
+            ->orWhere('barcode', 'LIKE', $search . '%');
         })
             ->select(
             'product_name',
@@ -188,9 +195,51 @@ class ServiceController extends Controller
         ->orderBy('product_name', 'asc')
         ->limit(10)
         ->get();
+        $inventoriess = Inventory::where('clinic_id', $clinicId)
+        ->where('account_id', $accountId)
+        ->where(function ($q) use ($search) {
+            $q->where('product_name', 'LIKE', $search . '%')
+              ->orWhere('product_code', 'LIKE', $search . '%')
+              ->orWhere('barcode', 'LIKE', $search . '%');
+        })
+        ->orderBy('product_name', 'asc')
+        ->limit(20)
+        ->get();
 
-        $recommendations = $recommendations
-        ->merge($inventories)
+        $inventoryRecommendations = [];
+
+        foreach ($inventoriess as $inventory) {
+
+            $stockDetails = json_decode($inventory->stock_details, true) ?? [];
+
+            foreach ($stockDetails as $batch) {
+
+                $size  = $batch['size'] ?? null;
+                $mrp   = $batch['mrp'] ?? 0;
+                $stock = $batch['stock'] ?? 0;
+
+                if (!$size || $stock <= 0) {
+                    continue;
+                }
+
+                $key = $inventory->product_name . '|' . $size . '|' . $mrp;
+
+                if (!isset($inventoryRecommendations[$key])) {
+                    $inventoryRecommendations[$key] = [
+                        'type' => 'inventory',
+                        'product_name' => $inventory->product_name,
+                        'size' => $size,
+                        'amount' => $mrp
+                    ];
+                }
+            }
+        }
+
+        $recommendations = collect($recommendations)->merge($inventories)
+        ->merge(array_values($inventoryRecommendations))
+        ->sortBy(function ($item) {
+            return $item['name'] ?? $item['product_name'];
+        })
         ->values();
 
         return response()->json([
@@ -199,4 +248,7 @@ class ServiceController extends Controller
             'recommendations' => $recommendations,
         ]);
     }
+
+    
+
 }

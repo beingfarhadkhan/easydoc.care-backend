@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\RazorPayPaymentController;
 use App\Http\Controllers\Api\PlanController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\ConsumableController;
 
 
 
@@ -219,6 +220,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('inventory/update-vendor', [InventoryController::class, 'updateVendor']);
     Route::get('inventory/vendor-list', [InventoryController::class, 'listVendor']);
     Route::get('inventory/get-vendor', [InventoryController::class, 'getVendor']);
+    Route::get('inventory/recommendation', [InventoryController::class, 'recommendInventories']);
+    
+
 
 
     //Order Routes
@@ -228,9 +232,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('order/show', [OrderController::class, 'show']);
     Route::post('order/update', [OrderController::class, 'update']);
     // Route::post('update-advance', [OrderController::class, 'addAdvance']);
-     
 
+
+     //Consumable Routes
+    Route::get('consumables', [ConsumableController::class, 'index']);
+    Route::post('consumable/update', [ConsumableController::class, 'update']);
+    Route::post('consumable/mark-as', [ConsumableController::class, 'markAs']);
+     
 });
 
 Route::post('/razorpay-webhook', [RazorPayPaymentController::class, 'razorpayWebhook']);
-
+// Route::post('inventory/migration-fix', [InventoryController::class, 'migrationFix']);

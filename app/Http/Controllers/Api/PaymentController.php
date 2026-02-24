@@ -15,7 +15,11 @@ class PaymentController extends Controller
     // }
     public function basedOnClinic(Request $request)
     {
-        $payments = Payment::where('clinic_id', $request->clinic_id)->get();
+        // $payments = Payment::where('clinic_id', $request->clinic_id)->get();
+
+        $payments = Payment::with('receipt.appointment.patient')
+        ->where('clinic_id', $request->clinic_id)
+        ->get();
 
         // Mode-wise sum
         $modeWiseTotal = [];

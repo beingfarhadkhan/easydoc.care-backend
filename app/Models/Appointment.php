@@ -16,7 +16,8 @@ class Appointment extends Model
         'duration',
         'time_slot',
         'check_in_status',
-        'type'
+        'type',
+        'services'
     ];
 
     public function patient()
@@ -37,6 +38,11 @@ class Appointment extends Model
     public function prescription()
     {
         return $this->hasOne(Prescription::class, 'appointment_id');
+    }
+
+     public function receipts()
+    {
+        return $this->hasMany(Receipt::class, 'appointment_id');
     }
 
     

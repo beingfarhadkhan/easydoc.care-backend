@@ -125,6 +125,45 @@ class PrescriptionController extends Controller
             }
         }
 
+        $user = auth()->user();
+        $userSuggestion = [];
+
+        if(!empty($user->pad_suggestion)){
+            $userSuggestion = json_decode($user->pad_suggestion, true);
+        }
+
+        foreach ($categories as $key => $type) {
+
+            if (!isset($data[$key]) || !is_array($data[$key])) {
+                continue;
+            }
+
+            if (!isset($userSuggestion[$type])) {
+                $userSuggestion[$type] = [];
+            }
+
+            if (!empty($data[$key])) {
+                foreach ($data[$key] as $item) {
+                    $name = $item['name'] ?? null;
+                    if ($name && !Dictionary::where('name', $name)->exists()) {
+                        Dictionary::create([
+                            'type' => $type,
+                            'name' => $name
+                        ]);
+                    }
+
+                    if (!in_array($name, $userSuggestion[$type])) {
+                // dd($userSuggestion[$type]);
+                            $userSuggestion[$type][] = $name;
+                    }
+                }
+            }         
+        }
+
+        $user->update([
+            'pad_suggestion' => json_encode($userSuggestion)
+        ]);
+
         $pdf_url = $this->generatePdf($prescription->id);
 
         Prescription::where('id',$prescription->id)->update([

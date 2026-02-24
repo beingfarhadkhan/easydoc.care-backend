@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\Account;
 use App\Models\Payment;
 use App\Models\Inventory;
+use App\Models\Consumable;
 
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
@@ -151,6 +152,43 @@ class ReceiptController extends Controller
                 // }
             }
 
+             $appointment = Appointment::with('patient')
+            ->find($existing->appointment_id);
+
+            $particulars = $request->particulars ?? [];
+
+            foreach ($particulars as $particular) {
+
+                $procedure = $particular['service_name'] ?? null;
+
+                if (!$procedure) {
+                    continue;
+                }
+
+                // Check if consumable already exists for this appointment + procedure
+                $exists = Consumable::where('clinic_id', $request->clinic_id)
+                    ->where('date_of_appointment', $appointment->appointment_date)
+                    ->where('patient_name', $appointment->patient->name)
+                    ->where('procedure', $procedure)
+                    ->exists();
+
+                // If already exists → skip
+                if ($exists) {
+                    continue;
+                }
+
+                // Otherwise create new consumable
+                Consumable::create([
+                    'clinic_id'           => $request->clinic_id,
+                    'patient_name'        => $appointment->patient->name,
+                    'date_of_appointment' => $appointment->appointment_date,
+                    'procedure'           => $procedure,
+                    'product_used'        => null, // will be updated later
+                    'created_at'          => now(),
+                    'updated_at'          => now(),
+                ]);
+            }
+
             $existing = Receipt::where('id',$existing->id)->first();
 
             return response()->json([
@@ -224,7 +262,7 @@ class ReceiptController extends Controller
                 'transaction_date' => now(),
                 'created_at' => now(),
                 'updated_at' => now()
-            ]);          
+            ]);
         }
 
         if (!empty($request->adv_payment_mode)) {
@@ -279,6 +317,26 @@ class ReceiptController extends Controller
             // }
         }
 
+        $appointment = Appointment::with('patient')
+            ->find($receipt->appointment_id);
+
+        $particulars = $request->particulars ?? [];
+
+        foreach ($particulars as $particular) {
+
+            Consumable::create([
+                'clinic_id'        => $request->clinic_id,
+                // 'appointment_id'   => $receipt->appointment_id,
+                // 'receipt_id'       => $receipt->id,
+                // 'patient_id'       => $receipt->patient_id,
+                'patient_name'     => $appointment->patient->name ,
+                'date_of_appointment' => $appointment->appointment_date ,
+                // 'time_slot'        => $appointment->time_slot ?? null,
+                'procedure'     => $particular['service_name'] ,
+                'created_at'       => now(),
+                'updated_at'       => now(),
+            ]);
+        }
 
         $receipt = Receipt::where('id',$receipt->id)->first();
 
@@ -315,7 +373,16 @@ class ReceiptController extends Controller
     {
         $receipts = Receipt::where('appointment_id', $request->appointment_id)->first();
         if(!$receipts){
-            return response()->json(['message' => 'No receipts found for this appointment'], 404); 
+            $appointment = Appointment::find($request->appointment_id);
+            if (!$appointment) {
+                return response()->json(['message' => 'Appointment not found'], 404);
+            }
+
+            $services = json_decode($appointment->services, true);
+            return response()->json([
+                'message' => 'No receipts found for this appointment',
+                'services' => $services
+            ], 404); 
         } 
 
         $patient = Patient::find($receipts->patient_id);
@@ -332,7 +399,7 @@ class ReceiptController extends Controller
             'payment_mode' => json_decode($receipts->payment_mode, true),
             'adv_payment_mode' => json_decode($receipts->adv_payment_mode, true),
             'advance_amount' => $receipts->advance_amount,
-            'additional_discount' => $receipts->additional_discount,
+            'additional_discount' => $receipts->additional_discount,            
             'remarks' => $receipts->remarks,
             'pdf_url' => $receipts->pdf_url,
             'created_at' => $receipts->created_at,
