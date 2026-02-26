@@ -11,4 +11,10 @@ class PatientToAccount extends Model
         'patient_id',
         'account_id',
     ];
+
+    public function patient()
+    {
+        return $this->belongsTo(Patient::class, 'patient_id');
+    }
 }
+

@@ -264,12 +264,28 @@ class PatientController extends Controller
             return response()->json(['message' => 'Clinic not found'], 404);
         }
 
-        $patients = Patient::where('clinic_id', $request->clinic_id)->get();
+        // $patients = Patient::where('clinic_id', $request->clinic_id)->get();
+         /* ---------------- Clinic Patients ---------------- */
+        $clinicPatients = Patient::where('clinic_id', $clinic->id)->get();
+
+        /* ---------------- Shared Patients (Account Based) ---------------- */
+        $sharedPatients = PatientToAccount::with('patient')
+            ->where('account_id', $clinic->account_id)
+            ->get()
+            ->pluck('patient')
+            ->filter(); // remove nulls
+
+        /* ---------------- Merge & Remove Duplicate ---------------- */
+        $patients = $clinicPatients
+            ->merge($sharedPatients)
+            ->unique('id')
+            ->values();
         
         if(!$patients){
             return response()->json(['message' => 'No patients found'], 404);
         }
         
+
         return response()->json([
             'patients' => $patients
         ]);

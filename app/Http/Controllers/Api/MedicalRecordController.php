@@ -17,7 +17,7 @@ class MedicalRecordController extends Controller
     {
         // Validate file
         $request->validate([
-            'file' => 'required|file|max:5120', // Max 5MB
+            'file' => 'required|file', // Max 5MB
         ]);
 
         // Get the file
