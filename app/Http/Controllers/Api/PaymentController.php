@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Payment;
+use App\Models\Receipt;
+use App\Models\Order;
+use App\Models\Clinic;
 
 class PaymentController extends Controller
 {
@@ -105,6 +108,80 @@ class PaymentController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+
+    public function advancePayment(Request $request){
+
+        $clinic = Clinic::find($request->clinic_id);
+        if (!$clinic) {
+            return response()->json(['message' => 'Clinic not found'], 201);
+        } 
+        
+        $receipt = Receipt::where('clinic_id', $request->clinic_id)
+            ->whereNotNull('advance_amount')
+            ->get();
+
+        $totalReceiptAmount = 0;
+        $totalPaidAmount = 0;
+        $receipts = [];
+
+        foreach($receipt as $r){
+            $subTotal = 0;
+            $particulars = $r->particulars;
+            if (is_string($particulars)) {
+            $particulars = json_decode($particulars, true);
+            }
+            
+            if(!empty($particulars) && is_array($particulars)){
+            foreach($particulars as $p){
+                if(is_array($p)){
+                $q = floatval($p['quantity'] ?? 0);
+                $fee = floatval($p['service_fee'] ?? 0);
+                $disc = floatval($p['discount_percent'] ?? 0);
+                $subTotal += $q * $fee * (1 - ($disc / 100));
+                }
+            }
+            }
+            
+            $receiptTotal = $subTotal - ($r->additional_discount ?? 0);
+            $totalReceiptAmount += $receiptTotal;
+
+            $currentPaid = 0;
+            $payment_mode = $r->payment_mode;
+
+            if (is_string($payment_mode)) {
+            $payment_mode = json_decode($payment_mode, true);
+            }
+
+            if(is_array($payment_mode)){
+            foreach($payment_mode as $m){
+                $currentPaid += floatval($m['amount'] ?? 0);
+            }
+            }
+            
+            $receiptPaidAmount = $currentPaid + $r->advance_amount;
+            $totalPaidAmount += $receiptPaidAmount;
+            $balanceAmount = $receiptTotal - $receiptPaidAmount;
+            
+            $receipts[] = array_merge($r->toArray(), [
+            'total_amount' => $receiptTotal,
+            'totalPaid' => $receiptPaidAmount,
+            'balance_amount' => $balanceAmount
+            ]);
+        }
+
+        $orders = Order::where('clinic_id', $request->clinic_id)
+                ->whereNotNull('advance_amount')
+                ->get();
+
+        return response()->json([
+            'receipts' => $receipts,
+            'order' => $orders, 
+
+            // 'grandReceiptTotal' => $totalReceiptAmount,
+            // 'grandTotalPaid' => $totalPaidAmount,
+            // 'grandBalanceAmount' => $totalReceiptAmount - $totalPaidAmount
+        ], 200);
     }
 
 

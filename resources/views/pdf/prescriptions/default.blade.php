@@ -276,6 +276,20 @@ $hasPMH =
 @endif
 
 <!-- DIAGNOSIS -->
+@if(!empty($prescription_data['presumedDiagnosis1']))
+<div class="section-title">Diagnosis</div>
+@foreach($prescription_data['presumedDiagnosis1'] as $list_item)
+    <p>{{ $list_item['name'] }} (Since: {{ $list_item['since'] ?? '-' }} | Status: {{ $list_item['status'] ?? '-' }} | Notes: {{ $list_item['note'] ?? '' }})</p>
+@endforeach
+
+<!-- DIAGNOSIS -->
+@if(!empty($prescription_data['presumedDiagnosis2']))
+<div class="section-title">Diagnosis</div>
+@foreach($prescription_data['presumedDiagnosis2'] as $list_item)
+    <p>{{ $list_item['name'] }} (Since: {{ $list_item['since'] ?? '-' }} | Status: {{ $list_item['status'] ?? '-' }} | Notes: {{ $list_item['note'] ?? '' }})</p>
+@endforeach
+
+<!-- DIAGNOSIS -->
 @if(!empty($prescription_data['diagnosis']))
 <div class="section-title">Diagnosis</div>
 @foreach($prescription_data['diagnosis'] as $list_item)
@@ -689,6 +703,105 @@ $hasPMH =
 <td>{{ $row['ciop'] }}</td>
 </tr>
 @endforeach
+</table>
+@endif
+
+
+{{-- ============================ --}}
+{{-- LASER PROCEDURE SECTION      --}}
+{{-- ============================ --}}
+@if(!empty($prescription_data['laserProcedure']))
+<div class="section-title">Laser Procedure</div>
+
+<table>
+    <tr>
+        <th>#</th>
+        <th>Procedure</th>
+        <th>Wavelength</th>
+        <th>Mode</th>
+        <th>Skin Type</th>
+        <th>Hair Type</th>
+        <th>Spot Size</th>
+        <th>Energy</th>
+        <th>Energy Density</th>
+        <th>Fluence</th>
+        <th>Frequency</th>
+        <th>Pulse Duration</th>
+        <th>Notes</th>
+    </tr>
+
+    @foreach($prescription_data['laserProcedure'] as $key => $laser)
+    <tr>
+        <td>{{ $key + 1 }}</td>
+        <td>{{ $laser['laser_procedure'] ?? $laser['name'] ?? '-' }}</td>
+        <td>{{ $laser['wavelength'] ?? '-' }}</td>
+        <td>{{ $laser['mode'] ?? '-' }}</td>
+        <td>{{ $laser['skintype'] ?? '-' }}</td>
+        <td>{{ $laser['hairtype'] ?? '-' }}</td>
+        <td>{{ $laser['spotsize'] ?? '-' }}</td>
+        <td>{{ $laser['energy'] ?? '-' }}</td>
+        <td>{{ $laser['energydensity'] ?? '-' }}</td>
+        <td>{{ $laser['fluence'] ?? '-' }}</td>
+        <td>{{ $laser['frequency'] ?? '-' }}</td>
+        <td>{{ $laser['pulseduration'] ?? '-' }}</td>
+        <td>{{ $laser['note'] ?? '-' }}</td>
+    </tr>
+    @endforeach
+</table>
+@endif
+
+{{-- ============================ --}}
+{{-- FACE PROCEDURE SECTION       --}}
+{{-- ============================ --}}
+@if(!empty($prescription_data['faceProcedure']['annotations']))
+<div class="section-title">Face Procedure</div>
+
+<table>
+    <tr>
+        <th>Area</th>
+        <th>Procedure</th>
+        <th>Severity</th>
+        <th>Date</th>
+        <th>Notes</th>
+        <th>Updated At</th>
+    </tr>
+
+    @foreach($prescription_data['faceProcedure']['annotations'] as $area => $face)
+    <tr>
+        <td>{{ ucwords(str_replace('-', ' ', $area)) }}</td>
+        <td>{{ $face['procedure'] ?? '-' }}</td>
+        <td>{{ $face['severity'] ?? '-' }}</td>
+        <td>{{ $face['date'] ?? '-' }}</td>
+        <td>{{ $face['notes'] ?? '-' }}</td>
+        <td>{{ $face['updatedAt'] ?? '-' }}</td>
+    </tr>
+    @endforeach
+</table>
+@endif
+
+
+{{-- ============================ --}}
+{{-- DERMA PROCEDURE SECTION      --}}
+{{-- ============================ --}}
+@if(!empty($prescription_data['dermaprocedure']))
+<div class="section-title">Derma Procedure</div>
+
+<table>
+    <tr>
+        <th>#</th>
+        <th>Procedure</th>
+        <th>Since</th>
+        <th>Notes</th>
+    </tr>
+
+    @foreach($prescription_data['dermaprocedure'] as $key => $derma)
+    <tr>
+        <td>{{ $key + 1 }}</td>
+        <td>{{ $derma['derma_procedure'] ?? $derma['name'] ?? '-' }}</td>
+        <td>{{ $derma['since'] ?? '-' }}</td>
+        <td>{{ $derma['note'] ?? '-' }}</td>
+    </tr>
+    @endforeach
 </table>
 @endif
 

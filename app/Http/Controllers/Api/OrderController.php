@@ -48,7 +48,7 @@ class OrderController extends Controller
                 $amount = ($payment['amount'] ?? 0);
                 $discountPercent = ($payment['discount_percent'] ?? 0);
 
-                // Apply percentage discount if present
+                
                 if ($discountPercent > 0) {
                     $discount = ($amount * $discountPercent) / 100;
                     $amount = max($amount - $discount, 0);
@@ -109,7 +109,7 @@ class OrderController extends Controller
             'updated_at' => now()
         ]);
 
-        $pdf_url = $this->generatePdf($order->id);
+        
 
         Order::where('id',$order->id)->update([
             'pdf_url' => $pdf_url,

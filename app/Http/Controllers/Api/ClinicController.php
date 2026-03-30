@@ -342,6 +342,63 @@ class ClinicController extends Controller
             ], 201);
         
     }
+    public function uploadPDFHeaderImg(Request $request)
+    {
+        
+            $file = $request->file('header_img');
+            $uploadPath = public_path('pdf_headers');
+            if (!file_exists($uploadPath)) {
+                mkdir($uploadPath, 0777, true);
+            }
+
+            $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
+            $file->move($uploadPath, $filename);
+            $fileUrl = url('pdf_headers/' . $filename);
+            return response()->json([
+                'message' => 'Header image uploaded successfully',
+                'pdf_header_image' => $filename,
+                
+            ], 201);
+        
+    }
+    public function uploadLetterheadImage(Request $request)
+    {
+        
+            $file = $request->file('letterhead_img');
+            $uploadPath = public_path('letterheads');
+            if (!file_exists($uploadPath)) {
+                mkdir($uploadPath, 0777, true);
+            }
+
+            $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
+            $file->move($uploadPath, $filename);
+            $fileUrl = url('letterheads/' . $filename);
+            return response()->json([
+                'message' => 'Letterhead image uploaded successfully',
+                'letterhead_image' => $filename,
+                
+            ], 201);
+        
+    }
+    public function uploadPDFFooterImg(Request $request)
+    {
+        
+            $file = $request->file('footer_img');
+            $uploadPath = public_path('pdf_footers');
+            if (!file_exists($uploadPath)) {
+                mkdir($uploadPath, 0777, true);
+            }
+
+            $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
+            $file->move($uploadPath, $filename);
+            $fileUrl = url('pdf_footers/' . $filename);
+            return response()->json([
+                'message' => 'Footer image uploaded successfully',
+                'pdf_footer_image' => $filename,
+                
+            ], 201);
+        
+    }
 
     public function updateReceiptConfig(Request $request)
     {
@@ -351,6 +408,11 @@ class ClinicController extends Controller
         $clinic->show_doctor_name = $request->show_doctor_name;
         $clinic->show_doctor_sign = $request->show_doctor_sign;
         $clinic->additional_content = $request->additional_content;
+        $clinic->pdf_margin_top = $request->pdf_margin_top;
+        $clinic->pdf_margin_bottom = $request->pdf_margin_bottom;
+        $clinic->letterhead_image = $request->letterhead_image;
+        // $clinic->pdf_header_image = $request->pdf_header_image;
+        // $clinic->pdf_footer_image = $request->pdf_footer_image;        
         $clinic->updated_at = now();
         $clinic->save();
 
@@ -368,7 +430,39 @@ class ClinicController extends Controller
             'receipt_template' => $clinic->receipt_template,
             'show_doctor_name' => $clinic->show_doctor_name,
             'show_doctor_sign' => $clinic->show_doctor_sign,
-            'additional_content' => $clinic->additional_content
+            'additional_content' => $clinic->additional_content,
+            'pdf_margin_top' => $clinic->pdf_margin_top,
+            'pdf_margin_bottom' => $clinic->pdf_margin_bottom,
+            'letterhead_image' => $clinic->letterhead_image,
+            // 'pdf_header_image' => $clinic->pdf_header_image,
+            // 'pdf_footer_image' => $clinic->pdf_footer_image
+        ], 200);
+    }
+
+    public function updatePrescriptionConfig(Request $request)
+    {
+        $clinic = Clinic::find($request->clinic_id);
+
+        $clinic->prescription_template = $request->prescription_template;
+        $clinic->pres_margin_top = $request->pres_margin_top;
+        $clinic->pres_margin_bottom = $request->pres_margin_bottom;       
+        $clinic->updated_at = now();
+        $clinic->save();
+
+        return response()->json([
+            'message' => 'Prescription template updated successfully',
+        ], 200);
+    }
+
+     public function getPrescriptionConfig(Request $request)
+    {
+        $clinic = Clinic::find($request->clinic_id);
+
+        return response()->json([
+            'clinic_id' => $clinic->id,
+            'prescription_template' => $clinic->prescription_template,
+            'pres_margin_top' => $clinic->pres_margin_top,
+            'pres_margin_bottom' => $clinic->pres_margin_bottom,
         ], 200);
     }
 }

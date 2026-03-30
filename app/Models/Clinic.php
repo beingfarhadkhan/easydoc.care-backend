@@ -18,7 +18,15 @@ class Clinic extends Model
         'receipt_template',
         'show_doctor_name',
         'show_doctor_sign',
+        'letterhead_image',
+        // 'pdf_header_image',
+        // 'pdf_footer_image',
+        'pdf_margin_top',
+        'pdf_margin_bottom',
         'additional_content',
+        'prescription_template',
+        'pres_margin_top',
+        'pres_margin_bottom',
     ];
 
     public function users()

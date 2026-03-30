@@ -172,10 +172,12 @@ class ServiceController extends Controller
             return response()->json(['status' => false, 'message' => 'Search parameter is required'], 400);
         }
 
-        $recommendations = Service::where('service_name', 'LIKE', $search . '%')
+        $recommendations = Service::where('clinic_id', $clinicId)
+            ->where('doctor_id', auth()->id())
+            ->where('service_name', 'LIKE', $search . '%')
             ->orderBy('service_name', 'asc')
             ->take(10)
-            ->get(['id', 'service_name', 'amount']);          
+            ->get(['id', 'service_name', 'amount']);
             
         /* Inventory Recommendations */
         $inventories = Inventory::where('clinic_id', $clinicId)
@@ -235,7 +237,8 @@ class ServiceController extends Controller
             }
         }
 
-        $recommendations = collect($recommendations)->merge($inventories)
+        $recommendations = collect($recommendations)
+        // ->merge($inventories)
         ->merge(array_values($inventoryRecommendations))
         ->sortBy(function ($item) {
             return $item['name'] ?? $item['product_name'];

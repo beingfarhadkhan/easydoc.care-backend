@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\PlanController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ConsumableController;
+use App\Http\Controllers\Api\SaleOrderController;
 
 
 
@@ -89,9 +90,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('update-selected-clinic', [ClinicController::class, 'updateSelectedClinic']); 
     Route::post('update-selected-account', [ClinicController::class, 'updateSelectedAccount']);
     Route::post('upload-clinic-logo', [ClinicController::class, 'uploadClinicLogo']);
+    Route::post('upload-clinic-header-img', [ClinicController::class, 'uploadPDFHeaderImg']);
+    Route::post('upload-clinic-footer-img', [ClinicController::class, 'uploadPDFFooterImg']);
+    Route::post('upload-letterhead-img', [ClinicController::class, 'uploadLetterheadImage']);
     Route::post('clinic/update', [ClinicController::class, 'update']);  
     Route::post('update-receipt-config', [ClinicController::class, 'updateReceiptConfig']);  
     Route::get('get-receipt-config', [ClinicController::class, 'getReceiptConfig']);  
+    Route::post('update-prescription-config', [ClinicController::class, 'updatePrescriptionConfig']);  
+    Route::get('get-prescription-config', [ClinicController::class, 'getPrescriptionConfig']);
     
 
     // patient API Routes
@@ -139,6 +145,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('payment/{id}', [PaymentController::class, 'show']);
     Route::get('payments-by-clinic', [PaymentController::class, 'basedOnClinic']);
     Route::get('payments-by-account', [PaymentController::class, 'basedOnAccount']);
+    Route::get('advance-payments', [PaymentController::class, 'advancePayment']);
+
     
 
     //Medical Record API Routes
@@ -238,6 +246,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('consumables', [ConsumableController::class, 'index']);
     Route::post('consumable/update', [ConsumableController::class, 'update']);
     Route::post('consumable/mark-as', [ConsumableController::class, 'markAs']);
+
+    //Sale Order Routes
+    Route::post('sale-order/store', [SaleOrderController::class, 'store']);
+    Route::get('sale-orders', [SaleOrderController::class, 'index']);
+    Route::post('sale-order/receive-items', [SaleOrderController::class, 'receiveOrderItems']);
      
 });
 

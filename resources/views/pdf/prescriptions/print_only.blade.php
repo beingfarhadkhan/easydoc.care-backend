@@ -1,0 +1,801 @@
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Prescription - PDF</title>
+        <style>
+            @page {
+                margin-top:  {{ ($clinic->pres_margin_top)*10 ?? 40 }}px;
+                margin-bottom:  {{ ($clinic->pres_margin_bottom)*10 ?? 40 }}px;
+                margin-left: 10mm;
+                margin-right: 10mm;
+            }
+            body {
+                font-family: 'DejaVu Sans', sans-serif;
+                font-size: 11.5px;
+                line-height: .75;
+                color: #000;
+                letter-spacing: 0.2px;
+            }
+
+            /* HEADER */
+            .header {
+                text-align: center;
+                margin-bottom: 2px;
+                margin-top: -6px;
+            }
+            .header h2 {
+                font-size: 18px;
+                font-weight: bold;
+                margin: 0;
+                color: #222;
+            }
+            .sub-header {
+                font-size: 9px;
+                color: #555;
+            }
+
+            hr { display:none; }
+
+            .section-title {
+                font-weight: bold;
+                font-size: 14px;
+                margin-top: 10px;
+                margin-bottom: 2px;
+                padding: 0;
+                line-height: 1.2;
+                align-items: center
+        }
+
+            /* TABLES */
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 2px;
+                font-size: 10.5px;
+                table-layout: fixed;
+                line-height: 1px;
+        }
+            th, td {
+                border: 1px solid #bfbfbf;
+                padding: 3px 4px;
+                vertical-align: middle;
+                text-align: left;
+                line-height: 1.25;
+        }
+            th {
+                /* background-color: #f7f7e8; */
+                border: 1px solid #bfbfbf;
+                font-weight: bold;
+        }
+
+            /* LIST SECTIONS */
+            .item-block p {
+                margin: 3px 0;
+            }
+
+            /* MULTI-COLUMN LAYOUT */
+            .two-col {
+                display: flex;
+                justify-content: space-between;
+                gap: 10px;
+            }
+            .two-col div {
+                width: 50%;
+            }
+            .company-info {
+                font-size: 13px;
+                color: #333;
+                text-align: right
+            }
+
+            /* FOOTER */
+            .footer {
+            position: fixed;
+            bottom: 4px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 9px;
+            color: #555;
+        }
+        </style>
+    </head>
+    <body>
+
+    {{-- <div class="header">
+        <h2>{{ $prescription->doctor_name ?? 'Dr. Name' }}</h2>
+        <div class="sub-header">Not valid for Medico Legal Purpose</div>
+    </div> --}}
+
+    <hr>
+
+    <!-- PATIENT DETAILS -->
+
+    <p>
+        <strong>{{ $patient['name'] ?? 'Patient Name' }}</strong>,
+        {{ $patient['gender'] ?? '' }},
+        {{ $patient['age'] ?? '' }} years
+        <span style="float:right">{{ \Carbon\Carbon::parse($prescription->created_at ?? now())->format('d/m/Y, H:i') }}</span>
+    </p>
+    <p><strong>UHID:</strong> {{ $prescription->uhid ?? '—' }}</p>
+
+    <!-- PATIENT MEDICAL HISTORY -->
+    {{-- @php
+    $pmh = $prescription_data['patientMedicalHistory'] ?? [];
+    @endphp
+
+    @if(
+        !empty($pmh['existingConditions']) || 
+        !empty($pmh['pastSurgicalProcedures']) || 
+        !empty($pmh['familyHistory']) || 
+        !empty($pmh['foodAllergies']) || 
+        !empty($pmh['currentMedications']) || 
+        !empty($pmh['lifestyleHabits'])
+        )
+        <div class="section-title">Patient Medical History</div>
+
+        @if(!empty($pmh['existingConditions']))
+        <p><strong>Existing Conditions:</strong> {{ implode(', ', $pmh['existingConditions']) }}</p>
+        @endif
+        @if(!empty($pmh['pastSurgicalProcedures']))
+        <p><strong>Past Surgical Procedures:</strong> {{ implode(', ', $pmh['pastSurgicalProcedures']) }}</p>
+        @endif
+        @if(!empty($pmh['familyHistory']))
+        <p><strong>Family History:</strong> {{ implode(', ', $pmh['familyHistory']) }}</p>
+        @endif
+        @if(!empty($pmh['foodAllergies']))
+        <p><strong>Food Allergies:</strong> {{ implode(', ', $pmh['foodAllergies']) }}</p>
+        @endif
+        @if(!empty($pmh['currentMedications']))
+        <p><strong>Current Medications:</strong> {{ implode(', ', $pmh['currentMedications']) }}</p>
+        @endif
+        @if(!empty($pmh['lifestyleHabits']))
+        <p><strong>Lifestyle Habits:</strong> {{ implode(', ', $pmh['lifestyleHabits']) }}</p>
+        @endif
+    @endif --}}
+    @php
+    $pmh = $prescription_data['patientMedicalHistory'] ?? [];
+
+    $hasPMH = 
+        !empty($pmh['existingConditions']) ||
+        !empty($pmh['pastSurgicalProcedures']) ||
+        !empty($pmh['familyHistory']) ||
+        !empty($pmh['foodAllergies']) ||
+        !empty($pmh['currentMedications']) ||
+        !empty($pmh['lifestyleHabits']);
+    @endphp
+
+    @if($hasPMH)
+    <div class="section-title">Patient Medical History</div>
+
+    {{-- Existing Conditions --}}
+    @if(!empty($pmh['existingConditions']))
+    <p><strong>Existing Conditions:</strong></p>
+    @foreach($pmh['existingConditions'] as $item)
+    <p>– {{ $item['condition'] ?? '-' }} (Since: {{ $item['since'] ?? '-' }} | Frequency: {{ $item['frequency'] ?? '-' }} | Notes: {{ $item['notes'] ?? '-' }})</p>
+    @endforeach
+    @endif
+
+    {{-- Past Surgical Procedures --}}
+    @if(!empty($pmh['pastSurgicalProcedures']))
+    <p><strong>Past Surgical Procedures:</strong></p>
+    @foreach($pmh['pastSurgicalProcedures'] as $item)
+    <p>– {{ $item['procedure'] ?? '-' }} (Year: {{ $item['year'] ?? '-' }} | Notes: {{ $item['notes'] ?? '-' }})</p>
+    @endforeach
+    @endif
+
+    {{-- Family History --}}
+    @if(!empty($pmh['familyHistory']))
+    <p><strong>Family History:</strong></p>
+    @foreach($pmh['familyHistory'] as $item)
+    <p>– {{ $item['name'] ?? '-' }} (Member: {{ $item['member'] ?? '-' }} | Status: {{ $item['status'] ?? '-' }} | Notes: {{ $item['notes'] ?? '-' }})</p>
+    @endforeach
+    @endif
+
+    {{-- Food Allergies --}}
+    @if(!empty($pmh['foodAllergies']))
+    <p><strong>Food Allergies:</strong></p>
+    @foreach($pmh['foodAllergies'] as $item)
+    <p>– {{ $item['allergen'] ?? '-' }} (Reaction: {{ $item['reaction'] ?? '-' }} | Severity: {{ $item['severity'] ?? '-' }})</p>
+    @endforeach
+    @endif
+
+    {{-- Current Medications --}}
+    @if(!empty($pmh['currentMedications']))
+    <p><strong>Current Medications:</strong></p>
+    @foreach($pmh['currentMedications'] as $item)
+    <p>– {{ $item['medication'] ?? '-' }} (Since: {{ $item['since'] ?? '-' }} | Dose: {{ $item['dosage'] ?? '-' }} | Frequency: {{ $item['frequency'] ?? '-' }} | Timing: {{ $item['timing'] ?? '-' }})</p>
+    @endforeach
+    @endif
+
+    {{-- Lifestyle Habits --}}
+    @if(!empty($pmh['lifestyleHabits']))
+    <p><strong>Lifestyle Habits:</strong></p>
+    @foreach($pmh['lifestyleHabits'] as $item)
+    <p>– {{ $item['habit'] ?? '-' }} (Frequency: {{ $item['frequency'] ?? '-' }} | Notes: {{ $item['notes'] ?? '-' }})</p>
+    @endforeach
+    @endif
+
+    @endif
+
+
+
+
+
+    <!-- VITALS -->
+    @php $v = $prescription_data['vitals']; @endphp
+    @if(!empty($v))
+        <div class="section-title">Vitals</div>
+        <p>
+            @if(!empty($v['bloodPressure'])) BP: {{ $v['bloodPressure'] }} | @endif
+            @if(!empty($v['spo2'])) SPO2: {{ $v['spo2'] }} | @endif
+            @if(!empty($v['height'])) Height: {{ $v['height'] }} cm | @endif
+            @if(!empty($v['weight'])) Weight: {{ $v['weight'] }} kg | @endif
+            @if(!empty($v['bmi'])) BMI: {{ $v['bmi'] }} @endif
+        </p>
+    @endif
+
+    <!-- SYMPTOMS -->
+    @if(!empty($prescription_data['symptoms']))
+    <div class="section-title">Symptoms</div>
+    @foreach($prescription_data['symptoms'] as $list_item)
+    <p>{{ $list_item['name'] }} (Since: {{ $list_item['since'] ?? '-' }} | Severity: {{ $list_item['severity'] ?? '-' }} | Notes: {{ $list_item['note'] ?? '' }})</p>
+    @endforeach
+    @endif
+
+    <!-- Chief Complaintsgit branch -M main -->
+    @if(!empty($prescription_data['chiefComplaints']))
+    <div class="section-title">Chief Complaints</div>
+    @foreach($prescription_data['chiefComplaints'] as $list_item)
+    <p>{{ $list_item['name'] }} (Since: {{ $list_item['since'] ?? '-' }} | Severity: {{ $list_item['severity'] ?? '-' }} | Notes: {{ $list_item['note'] ?? '' }})</p>
+    @endforeach
+    @endif
+
+    <!-- DIAGNOSIS -->
+    @if(!empty($prescription_data['presumedDiagnosis1']))
+    <div class="section-title">Diagnosis</div>
+    @foreach($prescription_data['presumedDiagnosis1'] as $list_item)
+        <p>{{ $list_item['name'] }} (Since: {{ $list_item['since'] ?? '-' }} | Status: {{ $list_item['status'] ?? '-' }} | Notes: {{ $list_item['note'] ?? '' }})</p>
+    @endforeach
+
+    <!-- DIAGNOSIS -->
+    @if(!empty($prescription_data['presumedDiagnosis2']))
+    <div class="section-title">Diagnosis</div>
+    @foreach($prescription_data['presumedDiagnosis2'] as $list_item)
+        <p>{{ $list_item['name'] }} (Since: {{ $list_item['since'] ?? '-' }} | Status: {{ $list_item['status'] ?? '-' }} | Notes: {{ $list_item['note'] ?? '' }})</p>
+    @endforeach
+
+    <!-- DIAGNOSIS -->
+    @if(!empty($prescription_data['diagnosis']))
+    <div class="section-title">Diagnosis</div>
+    @foreach($prescription_data['diagnosis'] as $list_item)
+        <p>{{ $list_item['name'] }} (Since: {{ $list_item['since'] ?? '-' }} | Status: {{ $list_item['status'] ?? '-' }} | Notes: {{ $list_item['note'] ?? '' }})</p>
+    @endforeach
+    @endif
+
+    <!-- PRESCRIPTION -->
+    @if(!empty($prescription_data['medications']))
+    {{-- <div class="section-title">Prescription</div> --}}
+    <table>
+        <tr>
+            <th colspan="6" style="text-align:center;">Prescription</th>
+        </tr>
+        <tr>
+            <th>#</th>
+            <th>Medicine</th>
+            <th>Dose</th>
+            <th>Frequency</th>
+            <th>Duration</th>
+            <th>Remarks</th>
+        </tr>
+    @foreach($prescription_data['medications'] as $key => $med)
+        <tr>
+            <td>{{ $key + 1 }}</td>
+            <td>{{ $med['name'] ?? '-' }}</td>
+            <td>{{ $med['dose'] ?? '-' }}</td>
+            <td>{{ $med['frequency'] ?? '-' }}</td>
+            <td>{{ $med['duration'] ?? '-' }}</td>
+            <td>{{ $med['remarks'] ?? '-' }}</td>
+        </tr>
+    @endforeach
+    </table>
+    @endif
+
+    <!-- INJECTIONS -->
+    @if(!empty($prescription_data['injections']))
+    <div class="section-title">Injections</div>
+    @foreach($prescription_data['injections'] as $inj)
+    <p>{{ $inj['name'] ?? '-' }} - {{ $inj['route'] ?? '-' }} ({{ $inj['dose'] ?? '-' }})</p>
+    @endforeach
+    @endif
+    <!---->
+
+    <!-- LAB TESTS / INVESTIGATIONS -->
+    @if(!empty($prescription_data['investigations']))
+    <div class="section-title">Investigations</div>
+    @foreach($prescription_data['investigations'] as $inv)
+    <p>{{ $inv['name'] }} - {{ $inv['test'] }} ({{ $inv['status'] }}) {{ $inv['notes'] }}</p>
+    @endforeach
+    @endif
+
+    <!-- EXAMINATION -->
+    @if(!empty($prescription_data['examination']))
+    <div class="section-title">Examination Findings</div>
+    @foreach($prescription_data['examination'] as $exam)
+    <p>{{ $exam['name'] }} | {{ $exam['note'] }}</p>
+    @endforeach
+    @endif
+
+
+    <!-- EYE REPORT -->
+    @if(!empty($prescription_data['eyeReport']))
+    {{-- <div style="page-break-before: always;"></div> --}}
+    <div class="section-title">Eye Report</div>
+    @foreach(['autoRefraction' => 'Auto Refraction', 'visualAcuity' => 'Visual Acuity', 'subjectiveRefraction' => 'Subjective Refraction', 'currentGlass' => 'Current Glass', 'finalGlass' => 'Final Glass', 'iop' => 'IOP'] as $key => $label)
+    @if(!empty($prescription_data['eyeReport'][$key]))
+    <h4>{{ $label }}</h4>
+    <table>
+        <tr>
+            @foreach(array_keys($prescription_data['eyeReport'][$key][0]) as $col)
+            <th>{{ strtoupper($col) }}</th>
+            @endforeach
+        </tr>
+        @foreach($prescription_data['eyeReport'][$key] as $row)
+        <tr>
+            @foreach($row as $val)
+            <td>{{ $val ?? '-' }}</td>
+            @endforeach
+        </tr>
+        @endforeach
+    </table>
+    @endif
+    @endforeach
+    @endif
+
+    <!-- DENTAL CHART -->
+    {{-- @if(!empty($prescription_data['dentalChart']))
+    <div class="section-title">Dental Chart</div>
+    <p><strong>Dentition Type:</strong> {{ $prescription_data['dentalChart']['dentitionType'] ?? '-' }}</p>
+    @if(!empty($prescription_data['dentalChart']['selectedTeeth']))
+    <p><strong>Selected Teeth:</strong> {{ implode(', ', $prescription_data['dentalChart']['selectedTeeth']) }}</p>
+    @endif
+    @if(!empty($prescription_data['dentalChart']['examinations']))
+    <p><strong>Examinations:</strong></p>
+    @foreach($prescription_data['dentalChart']['examinations'] as $tooth => $exam)
+    <p>Tooth {{ $tooth }}: {{ $exam }}</p>
+    @endforeach
+    @endif
+    @endif --}}
+
+
+    {{-- ============================== --}}
+    {{-- DENTAL CHART SECTION START     --}}
+    {{-- ============================== --}}
+
+    {{-- @if(!empty($prescription_data['dentalChart'])) --}}
+        
+        @php
+            $dental = $prescription_data['dentalChart'];
+            
+            $hasDentalData = 
+                !empty($dental['examinationFindings']) ||
+                !empty($dental['oralFindings']) ||
+                !empty($prescription_data['dentalProcedures']) ||
+                !empty($dental['procedures']);
+        @endphp
+        
+        @if($hasDentalData)
+            <div class="section-title">Dental Chart</div>
+            <div class="section-title">
+                DENTAL EXAMINATIONS / PAST PROCEDURES :
+            </div>
+
+
+        {{-- ============================ --}}
+        {{-- TOOTH EXAMINATIONS (Stylized) --}}
+        {{-- ============================ --}}
+
+        @if(!empty($dental['examinationFindings']))
+            @foreach($dental['examinationFindings'] as $tooth => $items)
+
+                @php
+                    $surfaces = !empty($dental['selectedSurfaces'][$tooth]) 
+                        ? implode(', ', $dental['selectedSurfaces'][$tooth]) 
+                        : null;
+
+                    // $examinationText = $items[0]['examination'] ?? '-';
+                @endphp
+                @foreach($items as $exam)
+                    <p style="margin:2px 0;">
+                        {{-- – <strong>T{{ $tooth }}</strong> 
+                        @if($surfaces)
+                            ({{ $surfaces }})
+                        @endif
+                        : {{ $examinationText }} --}}
+                        – <strong>T{{ $tooth }}</strong>
+                        @if($surfaces) ({{ $surfaces }}) @endif :
+                        {{ $exam['examination'] ?? '-' }}
+                        (Since: {{ $exam['since'] ?? '-' }} |
+                        Notes: {{ $exam['notes'] ?? '-' }})                
+                    </p>
+                @endforeach
+
+            @endforeach
+        @endif
+
+
+
+        {{-- ============================ --}}
+        {{-- ORAL FINDINGS (Stylized)     --}}
+        {{-- ============================ --}}
+        @if(!empty($dental['oralFindings']))
+            @foreach($dental['oralFindings'] as $oral)
+                @php
+                    $oralArea = $oral['area'] ?? '';
+                    $oralName = $oral['name'] ?? '-';
+                    $oralSince = $oral['since'] ?? '-';
+                    $oralNote = $oral['notes'] ?? '';
+                @endphp
+
+                <p style="margin:2px 0;">
+                    – <strong>ORAL FINDINGS</strong>
+                    @if(!empty($oralArea))
+                        ({{ $oralArea }})
+                    @endif
+                    : {{ $oralName }} (Since: {{ $oralSince }} | Notes: {{ $oralNote }})
+                </p>
+            @endforeach
+        @endif
+
+    @endif  {{-- END dentalChart --}}
+
+
+
+        {{-- ============================ --}}
+        {{-- PROCEDURES SECTION           --}}
+        {{-- ============================ --}}
+
+        {{-- @if(!empty($prescription_data['dentalChart']['procedures']))
+            @php
+                $procedures = $prescription_data['dentalChart']['procedures'];
+            @endphp
+
+            <p style="font-weight:bold; margin-top:10px;">Dental Procedures:</p>
+
+            <table>
+                <tr>
+                    <th>Procedure</th>
+                    <th>Tooth</th>
+                    <th>Area</th>
+                    <th>Visits</th>
+                    <th>Date</th>
+                    <th>Notes</th>
+                </tr>
+
+                @foreach($procedures as $p)
+                    <tr>
+                        <td>{{ $p['name'] ?? '-' }}</td>
+                        <td>{{ $p['tooth'] ?? '-' }}</td>
+                        <td>{{ $p['area'] ?? '-' }}</td>
+                        <td>{{ $p['visits'] ?? '-' }}</td>
+                        <td>{{ $p['date'] ?? '-' }}</td>
+                        <td>{{ $p['notes'] ?? '-' }}</td>
+                    </tr>
+                @endforeach
+            </table>
+        @endif --}}
+
+        @php
+            $procedures = $prescription_data['dentalProcedures']
+                ?? $prescription_data['dentalChart']['procedures']
+                ?? [];
+        @endphp
+
+        @if(!empty($procedures))
+            <p style="font-weight:bold; margin-top:10px;">Dental Procedures:</p>
+
+            <table>
+                <tr>
+                    <th>Procedure</th>
+                    <th>Tooth</th>
+                    <th>Area</th>
+                    <th>Visits</th>
+                    <th>Date</th>
+                    <th>Notes</th>
+                </tr>
+
+                @foreach($procedures as $p)
+                    <tr>
+                        <td>{{ $p['name'] ?? '-' }}</td>
+
+                        <td>
+                            {{ !empty($p['tooth']) && is_array($p['tooth']) 
+                                ? implode(', ', $p['tooth']) 
+                                : '-' }}
+                        </td>
+
+                        <td>
+                            {{ !empty($p['area']) && is_array($p['area']) 
+                                ? implode(', ', $p['area']) 
+                                : '-' }}
+                        </td>
+
+                        <td>{{ !empty($p['visits']) ? $p['visits'] : '-' }}</td>
+                        <td>{{ !empty($p['date']) ? $p['date'] : '-' }}</td>
+                        <td>{{ !empty($p['notes']) ? $p['notes'] : '-' }}</td>
+                    </tr>
+                @endforeach
+            </table>
+        @endif
+
+
+
+
+
+
+    <!-- PRESCRIBED LAB TESTS -->
+    @if(!empty($prescription_data['prescribedLabTests']))
+    <div class="section-title">Prescribed Lab Tests</div>
+    @foreach($prescription_data['prescribedLabTests'] as $test)
+    <p>{{ $test['name'] ?? '-' }} (On: {{ $test['on'] ?? '-' }} | Repeat: {{ $test['repeat'] ?? '-' }})</p>
+    @endforeach
+    @endif
+
+    <!-- INVESTIGATIVE READINGS -->
+    @if(!empty($prescription_data['investigativeReadings']))
+    <div class="section-title">Investigative Readings</div>
+    @foreach($prescription_data['investigativeReadings'] as $read)
+    <p>{{ $read['name'] ?? '-' }} : {{ $read['value'] ?? '-' }} [{{ $read['flag'] ?? '' }}] - {{ $read['date'] ?? '' }}</p>
+    @endforeach
+    @endif
+
+    <!-- NOTES -->
+    @if(!empty($prescription_data['notes']))
+    <div class="section-title">Notes</div>
+    <p>{{ $prescription_data['notes'] }}</p>
+    @endif
+
+    {{-- <!-- DENTAL PROCEDURES -->
+    @if(!empty($prescription_data['dentalProcedures']))
+    <div class="section-title">Dental Procedures</div>
+    <table>
+    <tr>
+    <th>#</th><th>Procedure</th><th>Teeth</th><th>Surfaces</th><th>Visits</th><th>Date</th>
+    </tr>
+    @foreach($prescription_data['dentalProcedures'] as $i => $proc)
+    <tr>
+    <td>{{ $i+1 }}</td>
+    <td>{{ $proc['procedure'] ?? '-' }}</td>
+    <td>{{ $proc['teeth'] ?? '-' }}</td>
+    <td>{{ $proc['surfaces'] ?? '-' }}</td>
+    <td>{{ $proc['visits'] ?? '-' }}</td>
+    <td>{{ $proc['date'] ?? '-' }}</td>
+    </tr>
+    @endforeach
+    </table>
+    @endif --}}
+
+    <!-- ADVANCED EYE SECTIONS -->
+    @if(!empty($prescription_data['visualAcuity']))
+    <div class="section-title">Visual Acuity Test</div>
+    <table>
+    <tr><th>EYE</th><th>UCDVA</th><th>UCNVA</th><th>PH</th><th>BCDVA</th><th>BCNVA</th></tr>
+    @foreach($prescription_data['visualAcuity'] as $row)
+    <tr>
+    <td>{{ $row['eye'] }}</td>
+    <td>{{ $row['ucdva'] }}</td>
+    <td>{{ $row['ucnva'] }}</td>
+    <td>{{ $row['ph'] }}</td>
+    <td>{{ $row['bcdva'] }}</td>
+    <td>{{ $row['bcnva'] }}</td>
+    </tr>
+    @endforeach
+    </table>
+    @endif
+
+    @if(!empty($prescription_data['subjectiveRefraction']))
+    <div class="section-title">Subjective Refraction</div>
+    <table>
+    <tr><th>EYE</th><th>SPH</th><th>CYL</th><th>AXIS</th><th>ADD</th><th>DVA</th><th>NVA</th></tr>
+    @foreach($prescription_data['subjectiveRefraction'] as $row)
+    <tr>
+    <td>{{ $row['eye'] }}</td>
+    <td>{{ $row['sph'] }}</td>
+    <td>{{ $row['cyl'] }}</td>
+    <td>{{ $row['axis'] }}</td>
+    <td>{{ $row['add'] }}</td>
+    <td>{{ $row['dva'] }}</td>
+    <td>{{ $row['nva'] }}</td>
+    </tr>
+    @endforeach
+    </table>
+    @endif
+
+    @if(!empty($prescription_data['autoRefraction']))
+    <div class="section-title">Auto Refraction</div>
+    <table>
+    <tr><th>EYE</th><th>SPH</th><th>CYL</th><th>AXIS</th><th>ADD</th><th>DVA</th><th>NVA</th></tr>
+    @foreach($prescription_data['autoRefraction'] as $row)
+    <tr>
+    <td>{{ $row['eye'] }}</td>
+    <td>{{ $row['sph'] }}</td>
+    <td>{{ $row['cyl'] }}</td>
+    <td>{{ $row['axis'] }}</td>
+    <td>{{ $row['add'] }}</td>
+    <td>{{ $row['dva'] }}</td>
+    <td>{{ $row['nva'] }}</td>
+    </tr>
+    @endforeach
+    </table>
+    @endif
+
+    @if(!empty($prescription_data['currentGlass']))
+    <div class="section-title">Current Glass Prescription</div>
+    <table>
+    <tr><th>EYE</th><th>SPH</th><th>CYL</th><th>AXIS</th><th>ADD</th><th>DVA</th><th>NVA</th></tr>
+    @foreach($prescription_data['currentGlass'] as $row)
+    <tr>
+    <td>{{ $row['eye'] }}</td>
+    <td>{{ $row['sph'] }}</td>
+    <td>{{ $row['cyl'] }}</td>
+    <td>{{ $row['axis'] }}</td>
+    <td>{{ $row['add'] }}</td>
+    <td>{{ $row['dva'] }}</td>
+    <td>{{ $row['nva'] }}</td>
+    </tr>
+    @endforeach
+    </table>
+    @endif
+
+    @if(!empty($prescription_data['finalGlass']))
+    <div class="section-title">Final Glass Prescription</div>
+    <table>
+    <tr><th>EYE</th><th>SPH</th><th>CYL</th><th>AXIS</th><th>ADD</th><th>DVA</th><th>NVA</th></tr>
+    @foreach($prescription_data['finalGlass'] as $row)
+    <tr>
+    <td>{{ $row['eye'] }}</td>
+    <td>{{ $row['sph'] }}</td>
+    <td>{{ $row['cyl'] }}</td>
+    <td>{{ $row['axis'] }}</td>
+    <td>{{ $row['add'] }}</td>
+    <td>{{ $row['dva'] }}</td>
+    <td>{{ $row['nva'] }}</td>
+    </tr>
+    @endforeach
+    </table>
+    @endif
+
+    <!-- IOP -->
+    @if(!empty($prescription_data['iop']))
+    <div class="section-title">IOP</div>
+    <table>
+    <tr><th>EYE</th><th>NCT</th><th>GAT</th><th>CCT</th><th>CIOP</th></tr>
+    @foreach($prescription_data['iop'] as $row)
+    <tr>
+    <td>{{ $row['eye'] }}</td>
+    <td>{{ $row['nct'] }}</td>
+    <td>{{ $row['gat'] }}</td>
+    <td>{{ $row['cct'] }}</td>
+    <td>{{ $row['ciop'] }}</td>
+    </tr>
+    @endforeach
+    </table>
+    @endif
+
+
+
+    {{-- ============================ --}}
+    {{-- LASER PROCEDURE SECTION      --}}
+    {{-- ============================ --}}
+    @if(!empty($prescription_data['laserProcedure']))
+    <div class="section-title">Laser Procedure</div>
+
+    <table>
+        <tr>
+            <th>#</th>
+            <th>Procedure</th>
+            <th>Wavelength</th>
+            <th>Mode</th>
+            <th>Skin Type</th>
+            <th>Hair Type</th>
+            <th>Spot Size</th>
+            <th>Energy</th>
+            <th>Energy Density</th>
+            <th>Fluence</th>
+            <th>Frequency</th>
+            <th>Pulse Duration</th>
+            <th>Notes</th>
+        </tr>
+
+        @foreach($prescription_data['laserProcedure'] as $key => $laser)
+        <tr>
+            <td>{{ $key + 1 }}</td>
+            <td>{{ $laser['laser_procedure'] ?? $laser['name'] ?? '-' }}</td>
+            <td>{{ $laser['wavelength'] ?? '-' }}</td>
+            <td>{{ $laser['mode'] ?? '-' }}</td>
+            <td>{{ $laser['skintype'] ?? '-' }}</td>
+            <td>{{ $laser['hairtype'] ?? '-' }}</td>
+            <td>{{ $laser['spotsize'] ?? '-' }}</td>
+            <td>{{ $laser['energy'] ?? '-' }}</td>
+            <td>{{ $laser['energydensity'] ?? '-' }}</td>
+            <td>{{ $laser['fluence'] ?? '-' }}</td>
+            <td>{{ $laser['frequency'] ?? '-' }}</td>
+            <td>{{ $laser['pulseduration'] ?? '-' }}</td>
+            <td>{{ $laser['note'] ?? '-' }}</td>
+        </tr>
+        @endforeach
+    </table>
+    @endif
+
+    {{-- ============================ --}}
+    {{-- FACE PROCEDURE SECTION       --}}
+    {{-- ============================ --}}
+    @if(!empty($prescription_data['faceProcedure']['annotations']))
+    <div class="section-title">Face Procedure</div>
+
+    <table>
+        <tr>
+            <th>Area</th>
+            <th>Procedure</th>
+            <th>Severity</th>
+            <th>Date</th>
+            <th>Notes</th>
+            <th>Updated At</th>
+        </tr>
+
+        @foreach($prescription_data['faceProcedure']['annotations'] as $area => $face)
+        <tr>
+            <td>{{ ucwords(str_replace('-', ' ', $area)) }}</td>
+            <td>{{ $face['procedure'] ?? '-' }}</td>
+            <td>{{ $face['severity'] ?? '-' }}</td>
+            <td>{{ $face['date'] ?? '-' }}</td>
+            <td>{{ $face['notes'] ?? '-' }}</td>
+            <td>{{ $face['updatedAt'] ?? '-' }}</td>
+        </tr>
+        @endforeach
+    </table>
+    @endif
+
+
+    {{-- ============================ --}}
+    {{-- DERMA PROCEDURE SECTION      --}}
+    {{-- ============================ --}}
+    @if(!empty($prescription_data['dermaprocedure']))
+    <div class="section-title">Derma Procedure</div>
+
+    <table>
+        <tr>
+            <th>#</th>
+            <th>Procedure</th>
+            <th>Since</th>
+            <th>Notes</th>
+        </tr>
+
+        @foreach($prescription_data['dermaprocedure'] as $key => $derma)
+        <tr>
+            <td>{{ $key + 1 }}</td>
+            <td>{{ $derma['derma_procedure'] ?? $derma['name'] ?? '-' }}</td>
+            <td>{{ $derma['since'] ?? '-' }}</td>
+            <td>{{ $derma['note'] ?? '-' }}</td>
+        </tr>
+        @endforeach
+    </table>
+    @endif
+
+
+
+    <!-- ADVICE -->
+    @if(!empty($prescription_data['advice']))
+    <div class="section-title">Advice</div>
+    <p>{{ $prescription_data['advice'] }}</p>
+    @endif
+
+    <!-- FOLLOWUP -->
+    @if(!empty($prescription_data['followUp']))
+    <div class="section-title">Follow-Up</div>
+    <p>{{ $prescription_data['followUp'] }}</p>
+    @endif
+
+    </body>
+    </html>

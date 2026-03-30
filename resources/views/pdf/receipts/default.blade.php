@@ -6,7 +6,7 @@
     <style>
         body {
             font-family: 'DejaVu Sans', Arial, sans-serif;
-            font-size: 13px;
+            font-size: 8px;
             color: #000;
             margin: 40px;
         }

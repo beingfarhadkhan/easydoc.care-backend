@@ -87,7 +87,7 @@ class UserController extends Controller
         //     'email' => 'required|string|email|max:255|unique:users',
         //     'phone' => 'required|string|max:10|unique:users',
         // ]);
-
+        
         //  $authUser = auth()->user();
         // if (!$authUser) {
         //     return response()->json([

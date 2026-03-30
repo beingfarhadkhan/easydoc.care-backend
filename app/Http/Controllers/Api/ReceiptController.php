@@ -640,7 +640,7 @@ class ReceiptController extends Controller
 
         // Safety fallback
         if (!view()->exists($viewPath)) {
-            $viewPath = 'pdf.receipts.modern';
+            $viewPath = 'pdf.receipts.default';
         }
 
         // Path to store PDFs

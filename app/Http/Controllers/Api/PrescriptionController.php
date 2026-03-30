@@ -226,7 +226,18 @@ class PrescriptionController extends Controller
         
         $prescription_data = json_decode($prescription->prescription_data, true);
 
-         $uploadDir = public_path('prescription_pdf');
+        // Default fallback
+        $template = $clinic->prescription_template ?? 'prescription';
+
+        // Blade path
+        $viewPath = 'pdf.prescriptions.' . $template;
+
+        // Safety fallback
+        if (!view()->exists($viewPath)) {
+            $viewPath = 'pdf.prescriptions.default';
+        }
+
+        $uploadDir = public_path('prescription_pdf');
         if (!file_exists($uploadDir)) {
             mkdir($uploadDir, 0777, true);
         }
@@ -245,7 +256,7 @@ class PrescriptionController extends Controller
         // ))->setPaper('a4', 'portrait');
 
 
-        $pdf = PDF::loadView('pdf.prescription', [
+        $pdf = PDF::loadView($viewPath, [
             'prescription' => $prescription,
             'patient' => $patient,
             'clinic' => $clinic,
